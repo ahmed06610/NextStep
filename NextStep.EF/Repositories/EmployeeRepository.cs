@@ -1,4 +1,5 @@
-﻿using NextStep.Core.Interfaces;
+﻿using Microsoft.EntityFrameworkCore;
+using NextStep.Core.Interfaces;
 using NextStep.Core.Models;
 using NextStep.EF.Data;
 using System;
@@ -17,6 +18,8 @@ namespace NextStep.EF.Repositories
         {
             _context = context;
         }
+        public async Task<Employee> GetByAppUserIdAsync(string id)
+       => await _context.Employees.SingleOrDefaultAsync(t => t.UserId == id);
     }
 
 }

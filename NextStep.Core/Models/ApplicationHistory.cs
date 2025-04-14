@@ -20,5 +20,6 @@ namespace NextStep.Core.Models
 
         public string Action { get; set; }
         public string Notes { get; set; }
+
     }
 }

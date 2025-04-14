@@ -11,5 +11,6 @@ namespace NextStep.Core.Const
         مقبول,
         مرفوض,
         قيد_التنفيذ,
+        طلب_جديد,
     }
 }

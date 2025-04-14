@@ -1,12 +1,22 @@
 ﻿
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Extensions;
+using Microsoft.OpenApi.Models;
+using NextStep.API.Helper;
 using NextStep.Core.Const;
+using NextStep.Core.Helper;
+using NextStep.Core.Interfaces;
+using NextStep.Core.Interfaces.Services;
 using NextStep.Core.Models;
+using NextStep.Core.Services;
 using NextStep.EF.Data;
+using NextStep.EF.Repositories;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 
 
@@ -31,18 +41,99 @@ namespace NextStep.API
                                .AllowAnyHeader();
                     });
             });
+            builder.Services.Configure<JWT>(builder.Configuration.GetSection("JWT"));
+
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 
-            builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+            // Configure the password constraints
+            builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+            {
+                options.User.AllowedUserNameCharacters = null;
+                options.User.RequireUniqueEmail = true;
+                options.Password.RequireDigit = false;
+                options.Password.RequiredLength = 8;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequiredUniqueChars = 1;
+            })
             .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddDefaultTokenProviders();
+        .AddTokenProvider<DataProtectorTokenProvider<ApplicationUser>>(TokenOptions.DefaultProvider);
+
+            // Configure token lifespan
+            builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+            {
+                options.TokenLifespan = TimeSpan.FromDays(7); // Set token lifespan to 7 days
+            });
+
+
+
+            // JWT Authentication
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(o =>
+            {
+                o.RequireHttpsMetadata = false;
+                o.SaveToken = false;
+                o.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"])),
+                    ValidIssuer = builder.Configuration["JWT:Issuer"],
+                    ValidAudience = builder.Configuration["JWT:Audience"]
+                };
+            });
+            builder.Services.AddAutoMapper(typeof(Program));
+            builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+            builder.Services.AddScoped<IApplicationHistoryRepository, ApplicationHistoryRepository>();
+            builder.Services.AddScoped<IApplicationRepository, ApplicationRepository>();
+            builder.Services.AddScoped<IApplicationTypeRepository, ApplicationTypeRepository>();
+            builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+            builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+            builder.Services.AddScoped<IStepsRepository, StepsRepository>();
+            builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+            builder.Services.AddScoped<IApplicationTypeService, ApplicationTypeService>();
+            builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IFileService, FileService>();
+            builder.Services.AddScoped<IApplicationService, ApplicationService>();
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Sanos Pharma API", Version = "v1" });
 
+                // Add JWT Authentication to Swagger
+                var securityScheme = new OpenApiSecurityScheme
+                {
+                    Name = "JWT Authentication",
+                    Description = "Enter JWT Bearer token **_only_**",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer", // must be lower case
+                    BearerFormat = "JWT",
+                    Reference = new OpenApiReference
+                    {
+                        Id = JwtBearerDefaults.AuthenticationScheme,
+                        Type = ReferenceType.SecurityScheme
+                    }
+                };
+                c.AddSecurityDefinition(securityScheme.Reference.Id, securityScheme);
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {securityScheme, new string[] { }}
+                });
+            });
             var app = builder.Build();
 
             using (var scope = app.Services.CreateScope())
@@ -57,6 +148,9 @@ namespace NextStep.API
                     await RoleSeed.Initialize(services);
                     // Seed application types
                     ApplicationTypeSeed.Initialize(services);
+
+                    // Seed steps
+                    StepsSeed.Initialize(services);
 
                 }
                 catch (Exception ex)
@@ -74,7 +168,9 @@ namespace NextStep.API
             }
 
             app.UseHttpsRedirection();
+            app.UseCors("AllowAll");
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
 
@@ -83,6 +179,114 @@ namespace NextStep.API
             app.Run();
         }
         
+    }
+    public static class StepsSeed
+    {
+        public static void Initialize(IServiceProvider serviceProvider)
+        {
+            using (var context = new ApplicationDbContext(
+                serviceProvider.GetRequiredService<DbContextOptions<ApplicationDbContext>>()))
+            {
+                if (context.Steps.Any())
+                {
+                    return; // DB has been seeded
+                }
+
+                var steps = new List<Steps>
+            {
+                // TransactionID 1
+                new Steps { TransactionID = 1, DepartmentID = 7, StepOrder = 1 },
+                new Steps { TransactionID = 1, DepartmentID = 5, StepOrder = 2 },
+                new Steps { TransactionID = 1, DepartmentID = 2, StepOrder = 3 },
+                new Steps { TransactionID = 1, DepartmentID = 1, StepOrder = 4 },
+
+                // TransactionID 2
+                new Steps { TransactionID = 2, DepartmentID = 7, StepOrder = 1 },
+                new Steps { TransactionID = 2, DepartmentID = 6, StepOrder = 2 },
+                new Steps { TransactionID = 2, DepartmentID = 2, StepOrder = 3 },
+                new Steps { TransactionID = 2, DepartmentID = 1, StepOrder = 4 },
+
+                // TransactionID 3
+                new Steps { TransactionID = 3, DepartmentID = 7, StepOrder = 1 },
+                new Steps { TransactionID = 3, DepartmentID = 3, StepOrder = 2 },
+                new Steps { TransactionID = 3, DepartmentID = 2, StepOrder = 3 },
+                new Steps { TransactionID = 3, DepartmentID = 1, StepOrder = 4 },
+
+                // TransactionID 4
+                new Steps { TransactionID = 4, DepartmentID = 7, StepOrder = 1 },
+                new Steps { TransactionID = 4, DepartmentID = 4, StepOrder = 2 },
+                new Steps { TransactionID = 4, DepartmentID = 2, StepOrder = 3 },
+                new Steps { TransactionID = 4, DepartmentID = 1, StepOrder = 4 },
+
+                // TransactionID 5
+                new Steps { TransactionID = 5, DepartmentID = 5, StepOrder = 1 },
+                new Steps { TransactionID = 5, DepartmentID = 2, StepOrder = 2 },
+                new Steps { TransactionID = 5, DepartmentID = 1, StepOrder = 3 },
+
+                // TransactionID 6
+                new Steps { TransactionID = 6, DepartmentID = 6, StepOrder = 1 },
+                new Steps { TransactionID = 6, DepartmentID = 2, StepOrder = 2 },
+                new Steps { TransactionID = 6, DepartmentID = 1, StepOrder = 3 },
+
+                // TransactionID 7
+                new Steps { TransactionID = 7, DepartmentID = 3, StepOrder = 1 },
+                new Steps { TransactionID = 7, DepartmentID = 2, StepOrder = 2 },
+                new Steps { TransactionID = 7, DepartmentID = 1, StepOrder = 3 },
+
+                // TransactionID 8
+                new Steps { TransactionID = 8, DepartmentID = 4, StepOrder = 1 },
+                new Steps { TransactionID = 8, DepartmentID = 2, StepOrder = 2 },
+                new Steps { TransactionID = 8, DepartmentID = 1, StepOrder = 3 },
+
+                // TransactionID 9
+                new Steps { TransactionID = 9, DepartmentID = 5, StepOrder = 1 },
+                new Steps { TransactionID = 9, DepartmentID = 2, StepOrder = 2 },
+                new Steps { TransactionID = 9, DepartmentID = 1, StepOrder = 3 },
+
+                // TransactionID 10
+                new Steps { TransactionID = 10, DepartmentID = 6, StepOrder = 1 },
+                new Steps { TransactionID = 10, DepartmentID = 2, StepOrder = 2 },
+                new Steps { TransactionID = 10, DepartmentID = 1, StepOrder = 3 },
+
+                // TransactionID 11
+                new Steps { TransactionID = 11, DepartmentID = 3, StepOrder = 1 },
+                new Steps { TransactionID = 11, DepartmentID = 2, StepOrder = 2 },
+                new Steps { TransactionID = 11, DepartmentID = 1, StepOrder = 3 },
+
+                // TransactionID 12
+                new Steps { TransactionID = 12, DepartmentID = 4, StepOrder = 1 },
+                new Steps { TransactionID = 12, DepartmentID = 2, StepOrder = 2 },
+                new Steps { TransactionID = 12, DepartmentID = 1, StepOrder = 3 },
+
+                // TransactionID 13
+                new Steps { TransactionID = 13, DepartmentID = 7, StepOrder = 1 },
+                new Steps { TransactionID = 13, DepartmentID = 5, StepOrder = 2 },
+                new Steps { TransactionID = 13, DepartmentID = 2, StepOrder = 3 },
+                new Steps { TransactionID = 13, DepartmentID = 1, StepOrder = 4 },
+
+                // TransactionID 14
+                new Steps { TransactionID = 14, DepartmentID = 7, StepOrder = 1 },
+                new Steps { TransactionID = 14, DepartmentID = 6, StepOrder = 2 },
+                new Steps { TransactionID = 14, DepartmentID = 2, StepOrder = 3 },
+                new Steps { TransactionID = 14, DepartmentID = 1, StepOrder = 4 },
+
+                // TransactionID 15
+                new Steps { TransactionID = 15, DepartmentID = 7, StepOrder = 1 },
+                new Steps { TransactionID = 15, DepartmentID = 3, StepOrder = 2 },
+                new Steps { TransactionID = 15, DepartmentID = 2, StepOrder = 3 },
+                new Steps { TransactionID = 15, DepartmentID = 1, StepOrder = 4 },
+
+                // TransactionID 16
+                new Steps { TransactionID = 16, DepartmentID = 7, StepOrder = 1 },
+                new Steps { TransactionID = 16, DepartmentID = 4, StepOrder = 2 },
+                new Steps { TransactionID = 16, DepartmentID = 2, StepOrder = 3 },
+                new Steps { TransactionID = 16, DepartmentID = 1, StepOrder = 4 }
+            };
+
+                context.Steps.AddRange(steps);
+                context.SaveChanges();
+            }
+        }
     }
     public static class DepartmentSeed
     {
@@ -117,30 +321,25 @@ namespace NextStep.API
         {
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-            // List of department-based roles
-            string[] departmentRoles = {
-                    " موظف مجلس الكليه",
-                    " موظف لجنه الدرسات العليا",
-                    " موظف حسابات علميه",
-                    " موظق ذكاء اصطناعي",
-                    " موظف علوم حاسب",
-                    " موظف نظم المعلومات",
-                    " موظف إدارة الدرسات العليا",
-                    "طالب",
-                };
-
-            foreach (var roleName in departmentRoles)
+            foreach (SystemRoles role in Enum.GetValues(typeof(SystemRoles)))
             {
-                var roleExist = await roleManager.RoleExistsAsync(roleName);
-                if (!roleExist)
+                // Get the display name attribute value
+                var displayAttribute = typeof(SystemRoles)
+                    .GetMember(role.ToString())
+                    .First()
+                    .GetCustomAttribute<DisplayAttribute>();
+
+                var roleName = displayAttribute?.Name ?? role.ToString();
+
+                // Check if role exists
+                if (!await roleManager.RoleExistsAsync(roleName))
                 {
-                    // Create the roles and seed them to the database
+                    // Create the role
                     await roleManager.CreateAsync(new IdentityRole(roleName));
                 }
             }
         }
     }
-
     public static class ApplicationTypeSeed
     {
         public static void Initialize(IServiceProvider serviceProvider)
@@ -166,7 +365,6 @@ namespace NextStep.API
             }
         }
 
-        // Helper extension methods to get display attributes
         private static string GetDisplayName(this Enum value)
         {
             return value.GetType()

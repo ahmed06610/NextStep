@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace NextStep.Core.Const
 {
-    public enum ApplicationRoles
+    public enum SystemRoles
     {
         [Display(Name = "موظف مجلس الكليه")]
         CollegeCouncilEmployee,
