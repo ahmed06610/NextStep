@@ -12,7 +12,9 @@ namespace NextStep.API.Helper
         {
             CreateMap<ApplicationType, ApplicationTypeDTO>()
     .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.ApplicationTypeID))
-    .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.ApplicationTypeName));
+    .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.ApplicationTypeName))
+    .ForMember(dest => dest.Requierment, opt => opt.MapFrom(src => src.Requierments.Select(r => r.Requierment.RequiermentName).ToList()));
+
 
             CreateMap<CreateApplicationTypeDTO, ApplicationType>();
             CreateMap<UpdateApplicationTypeDTO, ApplicationType>();

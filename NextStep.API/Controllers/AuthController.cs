@@ -43,5 +43,19 @@ namespace NextStep.API.Controllers
 
             return Ok(result);
         }
+
+        [HttpPost("login-student")]
+        public async Task<IActionResult> LoginStudentAsync([FromBody] LoginStudentDTO model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _authService.LoginStudentAsync(model);
+
+            if (!result.IsAuthenticated)
+                return BadRequest(result.Message);
+
+            return Ok(result);
+        }
     }
 }

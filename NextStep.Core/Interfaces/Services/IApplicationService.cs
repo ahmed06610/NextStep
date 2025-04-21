@@ -14,6 +14,8 @@ namespace NextStep.Core.Interfaces.Services
         Task<bool> ApproveApplicationAsync(ApplicationActionDTO dto, int employeeId, int departmentId);
         Task<bool> RejectApplicationAsync(ApplicationActionDTO dto, int employeeId, int departmentId);
         Task<ApplicationDetailsDTO> GetApplicationDetailsAsync(int applicationId);
+        Task<List<ApplicationStudent>> GetApplicationsForStuent(int StudentId);
+
 
         Task<InboxResponseDTO> GetInboxApplicationsAsync(int departmentId, bool isOrderCreatingDepartment);
         Task<OutboxResponseDTO> GetOutboxApplicationsAsync(int departmentId);

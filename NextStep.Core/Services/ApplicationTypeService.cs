@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace NextStep.Core.Services
 {
@@ -22,9 +23,13 @@ namespace NextStep.Core.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<ApplicationTypeDTO>> GetAllAsync()
+        public async Task<IEnumerable<ApplicationTypeDTO>> GetAllAsync(int departmentid)
         {
-            var types = await _unitOfWork.ApplicationType.GetAllAsync();
+            var types =await  _unitOfWork.ApplicationType.GetQueryable(at => at.CreatedByDeptId == departmentid).Include(at=>at.Requierments).ThenInclude(r=>r.Requierment).ToListAsync();
+            if (types == null || !types.Any())
+                return Enumerable.Empty<ApplicationTypeDTO>();
+
+
             return _mapper.Map<IEnumerable<ApplicationTypeDTO>>(types);
         }
 

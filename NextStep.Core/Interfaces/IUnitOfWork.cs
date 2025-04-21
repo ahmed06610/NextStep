@@ -16,6 +16,10 @@ namespace NextStep.Core.Interfaces
         IApplicationHistoryRepository ApplicationHistory { get; }
         IApplicationTypeRepository ApplicationType { get; }
         IStepsRepository Steps { get; }
+        IRequiermentsRepository Requierments { get; }
+        IRequiermentsApplicationTypeRepository RequiermentsApplicationType { get; }
+
+
 
         Task<int> CompleteAsync();
         Task RollbackAsync();

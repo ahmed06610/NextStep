@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using NextStep.Core.DTOs.Application;
 using NextStep.Core.Interfaces.Services;
 using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace NextStep.API.Controllers
 {
@@ -25,6 +26,21 @@ namespace NextStep.API.Controllers
             _fileService = fileService;
             _authService = authService;
         }
+
+        [HttpGet]
+        [Authorize( Roles ="طالب")]
+        public async Task<IActionResult> GetAppsForStudent()
+        {
+            if(!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var StudentId = int.Parse(User.FindFirst("LoggedId")?.Value);
+            var apps = await _applicationService.GetApplicationsForStuent(StudentId);
+            return Ok(apps);
+
+
+        }
+
         [HttpGet("{id}/details")]
         public async Task<IActionResult> GetApplicationDetails(int id)
         {
@@ -45,7 +61,7 @@ namespace NextStep.API.Controllers
             var employeeId = int.Parse(User.FindFirst("LoggedId")?.Value);
             var application = await _applicationService.CreateApplicationAsync(dto, employeeId);
 
-            return Ok(application);
+            return Ok();
         }
 
         [Authorize]

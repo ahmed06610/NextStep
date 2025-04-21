@@ -33,6 +33,35 @@ namespace NextStep.Core.Services
             _mapper = mapper;
         }
 
+        public async Task<List<ApplicationStudent>> GetApplicationsForStuent(int StudentId)
+        {
+            var AppliationsForStudent = await _unitOfWork.Application.GetQueryable(ap => ap.StudentID == StudentId)
+                .Include(ap => ap.Steps)
+                .Include(ap => ap.ApplicationType).ToListAsync();
+            var res = new List<ApplicationStudent>();
+
+            foreach (var app in AppliationsForStudent)
+            {
+                var steps = await _unitOfWork.Steps.GetQueryable(s => s.TransactionID == app.ApplicationTypeID).ToListAsync();
+                var step = steps.FirstOrDefault(s => s.StepsID == app.StepID);
+                var current = steps.IndexOf(step);
+
+                // Ensure proper floating-point division for progress calculation
+                var pro = current >= 0 && steps.Count > 0 ? (decimal)current / steps.Count : 0;
+
+                var ap = new ApplicationStudent
+                {
+                    Id = app.ApplicationID,
+                    Name = app.ApplicationType.ApplicationTypeName,
+                    Progress = pro
+                };
+
+                res.Add(ap); // Add the created ApplicationStudent to the result list
+            }
+
+            return res; // Return the list of ApplicationStudent
+        }
+
         public async Task<Application> CreateApplicationAsync(CreateApplicationDTO dto, int employeeId)
         {
             // Check if student exists
@@ -59,7 +88,7 @@ namespace NextStep.Core.Services
                 throw new Exception("No workflow steps defined for this application type");
 
 
-            var nextstep = await _unitOfWork.Steps.GetNextStepAsync(dto.ApplicationTypeID,initialStep.StepOrder);
+            var nextstep = await _unitOfWork.Steps.GetNextStepAsync(dto.ApplicationTypeID, initialStep.StepOrder);
             // Save file
             var filePath = await _fileService.SaveApplicationFileAsync(dto.Attachment, student.StudentID);
 
@@ -109,6 +138,11 @@ namespace NextStep.Core.Services
             var nextStep = await _unitOfWork.Steps.GetNextStepAsync(
                 application.ApplicationTypeID,
                 application.Steps.StepOrder);
+
+                /*
+                 * send approve to cumanda (instanceid)
+                 * next step, progrees
+                 */
 
             if (nextStep != null)
             {
@@ -200,7 +234,7 @@ namespace NextStep.Core.Services
             var applications = await _unitOfWork.Application
                 .GetByCurrentDepartmentAsync(departmentId);
 
-           
+
 
             var summary = new InboxSummaryDTO
             {
@@ -219,14 +253,14 @@ namespace NextStep.Core.Services
                     .OrderBy(h => h.ActionDate)
                     .FirstOrDefault()?.Department?.DepartmentName ?? "Unknown",
                 SentDate = a.CreatedDate,
-                Status = a.Status==AppStatues.قيد_التنفيذ.ToString()?AppStatues.طلب_جديد.ToString():a.Status,
-               /* History = a.ApplicationHistories.Select(h => new HistoryItemDTO
-                {
-                    ActionDate = h.ActionDate,
-                    Action = h.Action,
-                    Department = h.Department.DepartmentName,
-                    Notes = h.Notes
-                }).ToList()*/
+                Status = a.Status == AppStatues.قيد_التنفيذ.ToString() ? AppStatues.طلب_جديد.ToString() : a.Status,
+                /* History = a.ApplicationHistories.Select(h => new HistoryItemDTO
+                 {
+                     ActionDate = h.ActionDate,
+                     Action = h.Action,
+                     Department = h.Department.DepartmentName,
+                     Notes = h.Notes
+                 }).ToList()*/
             }).ToList();
 
             return new InboxResponseDTO
@@ -257,13 +291,13 @@ namespace NextStep.Core.Services
                 SendingDepartment = a.Steps.Department.DepartmentName,
                 SentDate = a.CreatedDate,
                 Status = a.Status,
-               /* History = a.ApplicationHistories.Select(h => new HistoryItemDTO
-                {
-                    ActionDate = h.ActionDate,
-                    Action = h.Action,
-                    Department = h.Department.DepartmentName,
-                    Notes = h.Notes
-                }).ToList()*/
+                /* History = a.ApplicationHistories.Select(h => new HistoryItemDTO
+                 {
+                     ActionDate = h.ActionDate,
+                     Action = h.Action,
+                     Department = h.Department.DepartmentName,
+                     Notes = h.Notes
+                 }).ToList()*/
             }).ToList();
 
             return new OutboxResponseDTO
@@ -311,6 +345,7 @@ namespace NextStep.Core.Services
                 CreatedDepartment = application.CreatedByUser.Department.DepartmentName,
                 Notes = application.Notes,
                 FileUrl = application.FileUpload,
+                Statue = application.Status,
                 History = application.ApplicationHistories
                     .OrderBy(h => h.ActionDate)
                     .Select(h => new HistoryItemDTO

@@ -25,6 +25,7 @@ namespace NextStep.EF.Repositories
             ApplicationHistory = new ApplicationHistoryRepository(_context);
             ApplicationType = new ApplicationTypeRepository(_context);
             Steps = new StepsRepository(_context);
+            Requierments = new RequiermentsRepository(_context);
         }
 
         public IEmployeeRepository Employee { get; private set; }
@@ -34,6 +35,8 @@ namespace NextStep.EF.Repositories
         public IApplicationHistoryRepository ApplicationHistory { get; private set; }
         public IApplicationTypeRepository ApplicationType { get; private set; }
         public IStepsRepository Steps { get; private set; }
+        public IRequiermentsRepository Requierments { get; private set; }
+        public IRequiermentsApplicationTypeRepository RequiermentsApplicationType { get; private set; }
 
         public async Task<IDbContextTransaction> BeginTransactionAsync()
         {

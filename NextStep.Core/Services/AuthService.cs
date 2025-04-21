@@ -267,6 +267,50 @@ namespace NextStep.Core.Services
                 _ => string.Empty
             };
         }
+
+        public async Task<AuthResponseDTO> LoginStudentAsync(LoginStudentDTO model)
+        {
+            var authModel = new AuthResponseDTO();
+
+            var user = await _userManager.FindByEmailAsync(model.NIdPassowrd+ "@univ.edu");
+            if (user == null || !await _userManager.CheckPasswordAsync(user, model.NIdPassowrd))
+            {
+                authModel.Message = "الايميل او كلمه المرور غير صحيحه";
+                return authModel;
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                authModel.Message = "الايميل لم يتم تأكيده";
+                return authModel;
+            }
+
+            var jwtToken = await CreateJwtToken(user);
+            var roles = await _userManager.GetRolesAsync(user);
+            var primaryRole = roles.FirstOrDefault();
+
+            // Get additional user info based on role
+            int loggedId = 0;
+           
+          
+                var student = await _unitOfWork.Student.GetByAppUserIdAsync(user.Id);
+                loggedId = student?.StudentID ?? 0;
+            
+
+            return new AuthResponseDTO
+            {
+                IsAuthenticated = true,
+                Token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
+                ExpiresOn = jwtToken.ValidTo,
+                Roles = roles.ToList(),
+                UserId = user.Id,
+                Email = user.Email,
+                Name = user.UserName,
+                LoggedId = loggedId,
+                Role = primaryRole,
+            };
+        }
+
         public async Task<JwtSecurityToken> CreateJwtToken(ApplicationUser user)
         {
             var userClaims = await _userManager.GetClaimsAsync(user);

@@ -11,5 +11,6 @@ namespace NextStep.Core.Models
         public ICollection<Employee> Employees { get; set; }
         public ICollection<Steps> Steps { get; set; }
         public ICollection<ApplicationHistory> ApplicationHistories { get; set; }
+        public ICollection<ApplicationType> ApplicationTypes { get; set; }
     }
 }

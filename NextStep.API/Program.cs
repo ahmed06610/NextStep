@@ -152,6 +152,8 @@ namespace NextStep.API
                     // Seed steps
                     StepsSeed.Initialize(services);
 
+                    RequiermentsSeed.Initialize(services);
+
                 }
                 catch (Exception ex)
                 {
@@ -314,6 +316,58 @@ namespace NextStep.API
             }
         }
     }
+    public static class RequiermentsSeed
+    {
+        public static void Initialize(IServiceProvider serviceProvider)
+        {
+            using (var context = new ApplicationDbContext(
+                serviceProvider.GetRequiredService<DbContextOptions<ApplicationDbContext>>()))
+            {
+                if (context.Requierments.Any())
+                {
+                    return; // DB has been seeded
+                }
+
+                context.Requierments.AddRange(
+                    new Requierments { RequiermentName = "التأكد من نجاح الطالب في جميع المقررات بمعدل لا يقل عن D+." },
+                    new Requierments { RequiermentName = "تسجيل موضوع الرسالة في فترة أقصاها فصلين دراسيين." },
+                    new Requierments { RequiermentName = "التأكد من حضور الطالب لعدد من السمينارات يعادل 4 ساعات معتمدة وتقديم تقارير عنها." },
+
+                    new Requierments { RequiermentName = "اجتياز سمينار 1." },
+                    new Requierments { RequiermentName = "في حالة وجود تعديلات على السمينار الأول، يتم التأكد من إتمام التعديلات." },
+
+                    new Requierments { RequiermentName = "لا تقل نسبة إنجاز الرسالة عن 50%." },
+                    new Requierments { RequiermentName = "التأكد من انتهاء فترة القيد." },
+
+                    new Requierments { RequiermentName = "التأكد من نسبة الاقتباس في الرسالة." },
+                    new Requierments { RequiermentName = "التأكد من نسبة الاقتباس في البحثين الأول والثاني." },
+                    new Requierments { RequiermentName = "وجود الأبحاث المنشورة موقعة من المشرفين." },
+                    new Requierments { RequiermentName = "وجود إثبات القبول موقع من المشرفين." },
+                    new Requierments { RequiermentName = "إعلان السمينار التأهيلي وتقرير الحضور." },
+                    new Requierments { RequiermentName = "حضور حلقتي نقاش (سمينارين)." },
+                    new Requierments { RequiermentName = "توفر عدد نسخ الرسالة بالعربية والإنجليزية موقعة من المشرفين." },
+
+                    new Requierments { RequiermentName = "وجود سبب مقبول لإيقاف القيد (مثل: مرض – خدمة عسكرية – رعاية طفل)." },
+                    new Requierments { RequiermentName = "استكمال الأوراق اللازمة لتقديم الطلب." },
+
+                    new Requierments { RequiermentName = "قبول الرسالة من قبل المشرفين." },
+                    new Requierments { RequiermentName = "وجود مستندات الطالب وتقارير السمينارات." },
+                    new Requierments { RequiermentName = "إخلاء طرف من المكتبة المركزية." },
+
+                    new Requierments { RequiermentName = "انقطاع الطالب عن الدراسة." },
+                    new Requierments { RequiermentName = "عدم سداد المصروفات." },
+                    new Requierments { RequiermentName = "عدم مناقشة الرسالة في المدة المحددة بحسب اللائحة." },
+                    new Requierments { RequiermentName = "السفر بدون إذن مسبق وعدم الحصول على منحة رسمية." },
+                    new Requierments { RequiermentName = "تكرار الرسوب في المقررات." },
+                    new Requierments { RequiermentName = "عدم الجدية في استكمال الرسالة." }
+                );
+
+                context.SaveChanges();
+            }
+        }
+    }
+
+
 
     public static class RoleSeed
     {

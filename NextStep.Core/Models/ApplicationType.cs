@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NextStep.Core.Models
 {
@@ -9,7 +10,12 @@ namespace NextStep.Core.Models
 
         public string ApplicationTypeName { get; set; }
         public string Description { get; set; }
+        [ForeignKey("Department")]
+        public int? CreatedByDeptId { get; set; }
+        public virtual Department Department { get; set; }
 
-        public ICollection<Application> Applications { get; set; }
+
+        public virtual ICollection<Application> Applications { get; set; }
+        public virtual ICollection<RequiermentsApplicationType> Requierments { get; set; }
     }
 }

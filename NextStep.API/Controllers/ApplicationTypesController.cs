@@ -1,12 +1,15 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NextStep.Core.DTOs.ApplicationType;
 using NextStep.Core.Interfaces.Services;
+using System.Security.Claims;
 
 namespace NextStep.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ApplicationTypesController : ControllerBase
     {
         private readonly IApplicationTypeService _service;
@@ -17,9 +20,13 @@ namespace NextStep.API.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<ApplicationTypeDTO>>> GetAll()
         {
-            var types = await _service.GetAllAsync();
+            var employeeId = int.Parse(User.FindFirst("LoggedId")?.Value);
+            var departmentId = int.Parse(User.FindFirstValue("DepartmentId"));
+
+            var types = await _service.GetAllAsync(departmentId);
             return Ok(types);
         }
 

@@ -1,4 +1,5 @@
 ﻿using NextStep.Core.DTOs.ApplicationType;
+using NextStep.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +10,7 @@ namespace NextStep.Core.Interfaces.Services
 {
     public interface IApplicationTypeService
     {
-        Task<IEnumerable<ApplicationTypeDTO>> GetAllAsync();
+        Task<IEnumerable<ApplicationTypeDTO>> GetAllAsync(int departmentid);
         Task<ApplicationTypeDTO> GetByIdAsync(int id);
         Task<ApplicationTypeDTO> CreateAsync(CreateApplicationTypeDTO dto);
         Task<ApplicationTypeDTO> UpdateAsync(UpdateApplicationTypeDTO dto);

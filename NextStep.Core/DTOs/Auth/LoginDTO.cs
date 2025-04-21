@@ -17,4 +17,10 @@ namespace NextStep.Core.DTOs.Auth
         [Required]
         public string Password { get; set; }
     }
+
+    public class LoginStudentDTO
+    {
+        [Required]
+        public string NIdPassowrd { get; set; }
+    }
 }
