@@ -110,7 +110,7 @@ namespace NextStep.API
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Sanos Pharma API", Version = "v1" });
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "NextStep API", Version = "v1" });
 
                 // Add JWT Authentication to Swagger
                 var securityScheme = new OpenApiSecurityScheme
@@ -164,11 +164,11 @@ namespace NextStep.API
             }
 
             // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
+            
+            
                 app.UseSwagger();
                 app.UseSwaggerUI();
-            }
+            
 
             app.UseHttpsRedirection();
             app.UseCors("AllowAll");
