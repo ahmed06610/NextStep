@@ -35,9 +35,9 @@ namespace NextStep.Core.Services
                 var roleName = roles.FirstOrDefault();
                 var empDTO = _mapper.Map<EmployeeDTO>(emp);
                 empDTO.Role = roleName;
-                 employeeDTOs.Add(empDTO);
-                
-          }
+                employeeDTOs.Add(empDTO);
+
+            }
             return employeeDTOs;
         }
 
@@ -63,6 +63,20 @@ namespace NextStep.Core.Services
                 await _userManager.ResetPasswordAsync(user, token, dto.Password);
             }
 
+            return true;
+        }
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var employee = await _unitOfWork.Employee.GetByIdAsync(id);
+            if (employee == null)
+                return false;
+            var user = await _userManager.FindByIdAsync(employee.UserId);
+            if (user == null)
+                return false;
+            var result = await _userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+                return false;
+            await _unitOfWork.Employee.DeleteAsync(employee);
             return true;
         }
     }

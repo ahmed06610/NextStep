@@ -6,5 +6,6 @@ namespace NextStep.Core.Interfaces.Services
     {
         Task<IEnumerable<EmployeeDTO>> GetAllAsync();
         Task<bool> UpdateAsync(int id, UpdateEmployeeDTO dto);
+        Task<bool> DeleteAsync(int id);
     }
 }
