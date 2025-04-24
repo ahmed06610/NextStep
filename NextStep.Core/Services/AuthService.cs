@@ -318,16 +318,18 @@ namespace NextStep.Core.Services
             var roleClaims = roles.Select(role => new Claim(ClaimTypes.Role, role)).ToList();
             var id = 0;
             Employee employee=null;
+            var department = 0;
+
             if (roles.Contains("طالب"))
             {
                 id = (await _unitOfWork.Student.GetByAppUserIdAsync(user.Id)).StudentID;
 
                  }
-            else
+            else if (!roles.Contains("ادمن"))
             {
                 id = (await _unitOfWork.Employee.GetByAppUserIdAsync(user.Id)).EmpID;
                 employee = await _unitOfWork.Employee.FindTWithIncludes<Employee>(id, "EmpID", e => e.Department);
-
+                department = employee.Department.DepartmentID;
             }
 
             var claims = new List<Claim>
@@ -336,7 +338,7 @@ namespace NextStep.Core.Services
             new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim("DepartmentId", employee?.Department?.DepartmentID.ToString() ?? string.Empty),
+            new Claim("DepartmentId",department.ToString()),
             new Claim("LoggedId", id.ToString()),// Id Of the LoggedIn User
 
            

@@ -14,7 +14,7 @@ namespace NextStep.Core.Models
         public int? CreatedByDeptId { get; set; }
         public virtual Department Department { get; set; }
 
-
+        public virtual ICollection<Steps> Steps { get; set; }   
         public virtual ICollection<Application> Applications { get; set; }
         public virtual ICollection<RequiermentsApplicationType> Requierments { get; set; }
     }

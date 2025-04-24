@@ -1,5 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -18,7 +17,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-
 
 namespace NextStep.API
 {
@@ -60,14 +58,13 @@ namespace NextStep.API
                 options.Password.RequiredUniqueChars = 1;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
-        .AddTokenProvider<DataProtectorTokenProvider<ApplicationUser>>(TokenOptions.DefaultProvider);
+            .AddTokenProvider<DataProtectorTokenProvider<ApplicationUser>>(TokenOptions.DefaultProvider);
 
             // Configure token lifespan
             builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
             {
                 options.TokenLifespan = TimeSpan.FromDays(7); // Set token lifespan to 7 days
             });
-
 
 
             // JWT Authentication
@@ -106,6 +103,8 @@ namespace NextStep.API
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IFileService, FileService>();
             builder.Services.AddScoped<IApplicationService, ApplicationService>();
+            builder.Services.AddScoped<IDepartmentService, DepartmentService>();
+            builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -147,13 +146,15 @@ namespace NextStep.API
                     // Seed roles
                     await RoleSeed.Initialize(services);
                     // Seed application types
-                    ApplicationTypeSeed.Initialize(services);
-
+/*                    ApplicationTypeSeed.Initialize(services);
+*/
                     // Seed steps
                     StepsSeed.Initialize(services);
 
                     RequiermentsSeed.Initialize(services);
 
+                    // Seed admin user
+                    await SeedAdminUser(services);
                 }
                 catch (Exception ex)
                 {
@@ -175,14 +176,40 @@ namespace NextStep.API
             app.UseAuthentication();
             app.UseAuthorization();
 
-
             app.MapControllers();
 
             app.Run();
         }
-        
+
+
+        public static async Task SeedAdminUser(IServiceProvider serviceProvider)
+        {
+            var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+            var adminRole = "ادمن";
+            if (!await roleManager.RoleExistsAsync(adminRole))
+            {
+                await roleManager.CreateAsync(new IdentityRole(adminRole));
+            }
+
+            var adminEmail = "Admin@example.com";
+            var adminUser = await userManager.FindByEmailAsync(adminEmail);
+            if (adminUser == null)
+            {
+                adminUser = new ApplicationUser
+                {
+                    UserName = "ADMIN",
+                    Email = adminEmail
+                };
+                await userManager.CreateAsync(adminUser, "Admin@123");
+                await userManager.AddToRoleAsync(adminUser, adminRole);
+            }
+        }
+
     }
-    public static class StepsSeed
+       
+          public static class StepsSeed
     {
         public static void Initialize(IServiceProvider serviceProvider)
         {
@@ -195,101 +222,102 @@ namespace NextStep.API
                 }
 
                 var steps = new List<Steps>
-            {
-                // TransactionID 1
-                new Steps { TransactionID = 1, DepartmentID = 7, StepOrder = 1 },
-                new Steps { TransactionID = 1, DepartmentID = 5, StepOrder = 2 },
-                new Steps { TransactionID = 1, DepartmentID = 2, StepOrder = 3 },
-                new Steps { TransactionID = 1, DepartmentID = 1, StepOrder = 4 },
+                {
+                    // ApplicationTypeID 1
+                    new Steps { ApplicationTypeID = 1, DepartmentID = 7, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 1, DepartmentID = 5, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 1, DepartmentID = 2, StepOrder = 3 },
+                    new Steps { ApplicationTypeID = 1, DepartmentID = 1, StepOrder = 4 },
 
-                // TransactionID 2
-                new Steps { TransactionID = 2, DepartmentID = 7, StepOrder = 1 },
-                new Steps { TransactionID = 2, DepartmentID = 6, StepOrder = 2 },
-                new Steps { TransactionID = 2, DepartmentID = 2, StepOrder = 3 },
-                new Steps { TransactionID = 2, DepartmentID = 1, StepOrder = 4 },
+                    // ApplicationTypeID 2
+                    new Steps { ApplicationTypeID = 2, DepartmentID = 7, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 2, DepartmentID = 6, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 2, DepartmentID = 2, StepOrder = 3 },
+                    new Steps { ApplicationTypeID = 2, DepartmentID = 1, StepOrder = 4 },
 
-                // TransactionID 3
-                new Steps { TransactionID = 3, DepartmentID = 7, StepOrder = 1 },
-                new Steps { TransactionID = 3, DepartmentID = 3, StepOrder = 2 },
-                new Steps { TransactionID = 3, DepartmentID = 2, StepOrder = 3 },
-                new Steps { TransactionID = 3, DepartmentID = 1, StepOrder = 4 },
+                    // ApplicationTypeID 3
+                    new Steps { ApplicationTypeID = 3, DepartmentID = 7, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 3, DepartmentID = 3, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 3, DepartmentID = 2, StepOrder = 3 },
+                    new Steps { ApplicationTypeID = 3, DepartmentID = 1, StepOrder = 4 },
 
-                // TransactionID 4
-                new Steps { TransactionID = 4, DepartmentID = 7, StepOrder = 1 },
-                new Steps { TransactionID = 4, DepartmentID = 4, StepOrder = 2 },
-                new Steps { TransactionID = 4, DepartmentID = 2, StepOrder = 3 },
-                new Steps { TransactionID = 4, DepartmentID = 1, StepOrder = 4 },
+                    // ApplicationTypeID 4
+                    new Steps { ApplicationTypeID = 4, DepartmentID = 7, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 4, DepartmentID = 4, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 4, DepartmentID = 2, StepOrder = 3 },
+                    new Steps { ApplicationTypeID = 4, DepartmentID = 1, StepOrder = 4 },
 
-                // TransactionID 5
-                new Steps { TransactionID = 5, DepartmentID = 5, StepOrder = 1 },
-                new Steps { TransactionID = 5, DepartmentID = 2, StepOrder = 2 },
-                new Steps { TransactionID = 5, DepartmentID = 1, StepOrder = 3 },
+                    // ApplicationTypeID 5
+                    new Steps { ApplicationTypeID = 5, DepartmentID = 5, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 5, DepartmentID = 2, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 5, DepartmentID = 1, StepOrder = 3 },
 
-                // TransactionID 6
-                new Steps { TransactionID = 6, DepartmentID = 6, StepOrder = 1 },
-                new Steps { TransactionID = 6, DepartmentID = 2, StepOrder = 2 },
-                new Steps { TransactionID = 6, DepartmentID = 1, StepOrder = 3 },
+                    // ApplicationTypeID 6
+                    new Steps { ApplicationTypeID = 6, DepartmentID = 6, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 6, DepartmentID = 2, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 6, DepartmentID = 1, StepOrder = 3 },
 
-                // TransactionID 7
-                new Steps { TransactionID = 7, DepartmentID = 3, StepOrder = 1 },
-                new Steps { TransactionID = 7, DepartmentID = 2, StepOrder = 2 },
-                new Steps { TransactionID = 7, DepartmentID = 1, StepOrder = 3 },
+                    // ApplicationTypeID 7
+                    new Steps { ApplicationTypeID = 7, DepartmentID = 3, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 7, DepartmentID = 2, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 7, DepartmentID = 1, StepOrder = 3 },
 
-                // TransactionID 8
-                new Steps { TransactionID = 8, DepartmentID = 4, StepOrder = 1 },
-                new Steps { TransactionID = 8, DepartmentID = 2, StepOrder = 2 },
-                new Steps { TransactionID = 8, DepartmentID = 1, StepOrder = 3 },
+                    // ApplicationTypeID 8
+                    new Steps { ApplicationTypeID = 8, DepartmentID = 4, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 8, DepartmentID = 2, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 8, DepartmentID = 1, StepOrder = 3 },
 
-                // TransactionID 9
-                new Steps { TransactionID = 9, DepartmentID = 5, StepOrder = 1 },
-                new Steps { TransactionID = 9, DepartmentID = 2, StepOrder = 2 },
-                new Steps { TransactionID = 9, DepartmentID = 1, StepOrder = 3 },
+                    // ApplicationTypeID 9
+                    new Steps { ApplicationTypeID = 9, DepartmentID = 5, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 9, DepartmentID = 2, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 9, DepartmentID = 1, StepOrder = 3 },
 
-                // TransactionID 10
-                new Steps { TransactionID = 10, DepartmentID = 6, StepOrder = 1 },
-                new Steps { TransactionID = 10, DepartmentID = 2, StepOrder = 2 },
-                new Steps { TransactionID = 10, DepartmentID = 1, StepOrder = 3 },
+                    // ApplicationTypeID 10
+                    new Steps { ApplicationTypeID = 10, DepartmentID = 6, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 10, DepartmentID = 2, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 10, DepartmentID = 1, StepOrder = 3 },
 
-                // TransactionID 11
-                new Steps { TransactionID = 11, DepartmentID = 3, StepOrder = 1 },
-                new Steps { TransactionID = 11, DepartmentID = 2, StepOrder = 2 },
-                new Steps { TransactionID = 11, DepartmentID = 1, StepOrder = 3 },
+                    // ApplicationTypeID 11
+                    new Steps { ApplicationTypeID = 11, DepartmentID = 3, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 11, DepartmentID = 2, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 11, DepartmentID = 1, StepOrder = 3 },
 
-                // TransactionID 12
-                new Steps { TransactionID = 12, DepartmentID = 4, StepOrder = 1 },
-                new Steps { TransactionID = 12, DepartmentID = 2, StepOrder = 2 },
-                new Steps { TransactionID = 12, DepartmentID = 1, StepOrder = 3 },
+                    // ApplicationTypeID 12
+                    new Steps { ApplicationTypeID = 12, DepartmentID = 4, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 12, DepartmentID = 2, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 12, DepartmentID = 1, StepOrder = 3 },
 
-                // TransactionID 13
-                new Steps { TransactionID = 13, DepartmentID = 7, StepOrder = 1 },
-                new Steps { TransactionID = 13, DepartmentID = 5, StepOrder = 2 },
-                new Steps { TransactionID = 13, DepartmentID = 2, StepOrder = 3 },
-                new Steps { TransactionID = 13, DepartmentID = 1, StepOrder = 4 },
+                    // ApplicationTypeID 13
+                    new Steps { ApplicationTypeID = 13, DepartmentID = 7, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 13, DepartmentID = 5, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 13, DepartmentID = 2, StepOrder = 3 },
+                    new Steps { ApplicationTypeID = 13, DepartmentID = 1, StepOrder = 4 },
 
-                // TransactionID 14
-                new Steps { TransactionID = 14, DepartmentID = 7, StepOrder = 1 },
-                new Steps { TransactionID = 14, DepartmentID = 6, StepOrder = 2 },
-                new Steps { TransactionID = 14, DepartmentID = 2, StepOrder = 3 },
-                new Steps { TransactionID = 14, DepartmentID = 1, StepOrder = 4 },
+                    // ApplicationTypeID 14
+                    new Steps { ApplicationTypeID = 14, DepartmentID = 7, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 14, DepartmentID = 6, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 14, DepartmentID = 2, StepOrder = 3 },
+                    new Steps { ApplicationTypeID = 14, DepartmentID = 1, StepOrder = 4 },
 
-                // TransactionID 15
-                new Steps { TransactionID = 15, DepartmentID = 7, StepOrder = 1 },
-                new Steps { TransactionID = 15, DepartmentID = 3, StepOrder = 2 },
-                new Steps { TransactionID = 15, DepartmentID = 2, StepOrder = 3 },
-                new Steps { TransactionID = 15, DepartmentID = 1, StepOrder = 4 },
+                    // ApplicationTypeID 15
+                    new Steps { ApplicationTypeID = 15, DepartmentID = 7, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 15, DepartmentID = 3, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 15, DepartmentID = 2, StepOrder = 3 },
+                    new Steps { ApplicationTypeID = 15, DepartmentID = 1, StepOrder = 4 },
 
-                // TransactionID 16
-                new Steps { TransactionID = 16, DepartmentID = 7, StepOrder = 1 },
-                new Steps { TransactionID = 16, DepartmentID = 4, StepOrder = 2 },
-                new Steps { TransactionID = 16, DepartmentID = 2, StepOrder = 3 },
-                new Steps { TransactionID = 16, DepartmentID = 1, StepOrder = 4 }
-            };
+                    // ApplicationTypeID 16
+                    new Steps { ApplicationTypeID = 16, DepartmentID = 7, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 16, DepartmentID = 4, StepOrder = 2 },
+                    new Steps { ApplicationTypeID = 16, DepartmentID = 2, StepOrder = 3 },
+                    new Steps { ApplicationTypeID = 16, DepartmentID = 1, StepOrder = 4 }
+                };
 
                 context.Steps.AddRange(steps);
                 context.SaveChanges();
             }
         }
     }
+
     public static class DepartmentSeed
     {
         public static void Initialize(IServiceProvider serviceProvider)
@@ -316,6 +344,7 @@ namespace NextStep.API
             }
         }
     }
+
     public static class RequiermentsSeed
     {
         public static void Initialize(IServiceProvider serviceProvider)
@@ -367,8 +396,6 @@ namespace NextStep.API
         }
     }
 
-
-
     public static class RoleSeed
     {
         public static async Task Initialize(IServiceProvider serviceProvider)
@@ -394,47 +421,10 @@ namespace NextStep.API
             }
         }
     }
-    public static class ApplicationTypeSeed
-    {
-        public static void Initialize(IServiceProvider serviceProvider)
-        {
-            using (var context = new ApplicationDbContext(
-                serviceProvider.GetRequiredService<DbContextOptions<ApplicationDbContext>>()))
-            {
-                if (context.ApplicationTypes.Any())
-                {
-                    return; // DB has been seeded
-                }
+      
 
-                var applicationTypes = Enum.GetValues(typeof(ApplicationTypeEnum))
-                    .Cast<ApplicationTypeEnum>()
-                    .Select(e => new ApplicationType
-                    {
-                        ApplicationTypeName = e.GetDisplayName(),
-                        Description = e.GetDisplayDescription()
-                    });
 
-                context.ApplicationTypes.AddRange(applicationTypes);
-                context.SaveChanges();
-            }
-        }
-
-        private static string GetDisplayName(this Enum value)
-        {
-            return value.GetType()
-                       .GetMember(value.ToString())
-                       .First()
-                       .GetCustomAttribute<DisplayAttribute>()?
-                       .Name ?? value.ToString();
-        }
-
-        private static string GetDisplayDescription(this Enum value)
-        {
-            return value.GetType()
-                       .GetMember(value.ToString())
-                       .First()
-                       .GetCustomAttribute<DisplayAttribute>()?
-                       .GetDescription() ?? string.Empty;
-        }
     }
-}
+
+   
+  

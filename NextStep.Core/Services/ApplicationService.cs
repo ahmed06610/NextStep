@@ -42,7 +42,7 @@ namespace NextStep.Core.Services
 
             foreach (var app in AppliationsForStudent)
             {
-                var steps = await _unitOfWork.Steps.GetQueryable(s => s.TransactionID == app.ApplicationTypeID).ToListAsync();
+                var steps = await _unitOfWork.Steps.GetQueryable(s => s.ApplicationTypeID == app.ApplicationTypeID).ToListAsync();
                 var step = steps.FirstOrDefault(s => s.StepsID == app.StepID);
                 var current = steps.IndexOf(step);
 
@@ -322,7 +322,7 @@ namespace NextStep.Core.Services
                 return null;
 
             // Get all steps for this application type
-            var allSteps = await _unitOfWork.Steps.GetQueryable(s => s.TransactionID == application.ApplicationTypeID)
+            var allSteps = await _unitOfWork.Steps.GetQueryable(s => s.ApplicationTypeID == application.ApplicationTypeID)
                 .OrderBy(s => s.StepOrder)
                 .Include(s => s.Department)
                 .ToListAsync();

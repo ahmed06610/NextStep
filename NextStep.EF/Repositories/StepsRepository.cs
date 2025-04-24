@@ -16,14 +16,14 @@ namespace NextStep.EF.Repositories
         public async Task<Steps> GetInitialStepByApplicationType(int applicationTypeId)
         {
             return await _context.Steps
-                .Where(s => s.TransactionID == applicationTypeId)
+                .Where(s => s.ApplicationTypeID == applicationTypeId)
                 .OrderBy(s => s.StepOrder)
                 .FirstOrDefaultAsync();
         }
         public async Task<Steps> GetNextStepAsync(int applicationTypeId, int currentStepOrder)
         {
             return await _context.Steps
-                .Where(s => s.TransactionID == applicationTypeId && s.StepOrder > currentStepOrder)
+                .Where(s => s.ApplicationTypeID == applicationTypeId && s.StepOrder > currentStepOrder)
                 .OrderBy(s => s.StepOrder)
                 .FirstOrDefaultAsync();
         }

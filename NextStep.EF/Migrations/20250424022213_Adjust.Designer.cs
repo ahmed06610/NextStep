@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NextStep.EF.Data;
 
@@ -11,9 +12,11 @@ using NextStep.EF.Data;
 namespace NextStep.EF.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250424022213_Adjust")]
+    partial class Adjust
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1169,13 +1172,16 @@ namespace NextStep.EF.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("StepsID"));
 
-                    b.Property<int>("ApplicationTypeID")
+                    b.Property<int?>("ApplicationTypeID")
                         .HasColumnType("int");
 
                     b.Property<int>("DepartmentID")
                         .HasColumnType("int");
 
                     b.Property<int>("StepOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TransactionID")
                         .HasColumnType("int");
 
                     b.HasKey("StepsID");
@@ -1365,19 +1371,15 @@ namespace NextStep.EF.Migrations
 
             modelBuilder.Entity("NextStep.Core.Models.Steps", b =>
                 {
-                    b.HasOne("NextStep.Core.Models.ApplicationType", "ApplicationType")
+                    b.HasOne("NextStep.Core.Models.ApplicationType", null)
                         .WithMany("Steps")
-                        .HasForeignKey("ApplicationTypeID")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .IsRequired();
+                        .HasForeignKey("ApplicationTypeID");
 
                     b.HasOne("NextStep.Core.Models.Department", "Department")
                         .WithMany("Steps")
                         .HasForeignKey("DepartmentID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("ApplicationType");
 
                     b.Navigation("Department");
                 });

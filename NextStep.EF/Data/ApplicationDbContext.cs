@@ -77,6 +77,15 @@ namespace NextStep.EF.Data
                 .HasForeignKey(s => s.DepartmentID)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Configure Steps relationship with ApplicationType
+        
+            modelBuilder.Entity<Steps>()
+                .HasOne(s => s.ApplicationType)
+                .WithMany(at => at.Steps)
+                .HasForeignKey(s => s.ApplicationTypeID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+
             modelBuilder.Entity<RequiermentsApplicationType>().HasData(
                 // 1) الالتحاق (Ids 1-4)
                 new { Id = 1, ApplicationTypeId = 1, RequiermentId = 1 },

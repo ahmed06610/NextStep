@@ -8,8 +8,8 @@ namespace NextStep.Core.Models
         [Key]
         public int StepsID { get; set; }
 
-        [ForeignKey("Transaction")]
-        public int TransactionID { get; set; }
+        [ForeignKey("ApplicationType")]
+        public int ApplicationTypeID { get; set; }
 
         [ForeignKey("Department")]
         public int DepartmentID { get; set; }
@@ -17,8 +17,9 @@ namespace NextStep.Core.Models
 
         public int StepOrder { get; set; }
 
+      
+        public ApplicationType ApplicationType { get; set; }
+
         public ICollection<Application> Applications { get; set; }
     }
-    // 1 , 2 , 1
-    // 1, 5 , 2
 }
