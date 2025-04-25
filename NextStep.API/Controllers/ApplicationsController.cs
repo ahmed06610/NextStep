@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 using NextStep.Core.DTOs.Application;
 using NextStep.Core.Interfaces.Services;
 using System.Security.Claims;
@@ -26,8 +27,41 @@ namespace NextStep.API.Controllers
             _fileService = fileService;
             _authService = authService;
         }
+        [HttpGet("{id}/download")]
+        public async Task<IActionResult> DownloadFile(int id)
+        {
+            try
+            {
+                // Retrieve the application record
+                var application = await _applicationService.GetApplicationDetailsAsync(id);
+                if (application == null)
+                    return NotFound("Application not found.");
 
-        [HttpGet]
+                // Get the file path from the FileUpload property
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", application.FileUrl);
+
+                // Check if the file exists
+                if (!System.IO.File.Exists(filePath))
+                    return NotFound("File not found.");
+
+                // Get the file's content type
+                var contentType = "application/octet-stream"; // Default content type
+                new FileExtensionContentTypeProvider().TryGetContentType(filePath, out contentType);
+
+                // Return the file as a response
+                var fileName = Path.GetFileName(filePath);
+                return PhysicalFile(filePath, contentType, fileName);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                Console.WriteLine($"Error in DownloadFile: {ex.Message}");
+                return StatusCode(500, "An error occurred while processing your request.");
+            }
+        }
+
+
+        [HttpGet("GetAppsForStudent")]
         [Authorize( Roles ="طالب")]
         public async Task<IActionResult> GetAppsForStudent()
         {
@@ -40,7 +74,7 @@ namespace NextStep.API.Controllers
 
 
         }
-
+        [Authorize]
         [HttpGet("{id}/details")]
         public async Task<IActionResult> GetApplicationDetails(int id)
         {
@@ -92,7 +126,12 @@ namespace NextStep.API.Controllers
             return Ok();
         }
         [HttpGet("inbox")]
-        public async Task<IActionResult> GetInbox()
+        public async Task<IActionResult> GetInbox(
+    [FromQuery] string search = null,
+    [FromQuery] int? requestType = null,
+    [FromQuery] string status = null,
+    [FromQuery] int page = 1,
+    [FromQuery] int limit = 10)
         {
             var departmentId = int.Parse(User.FindFirstValue("DepartmentId"));
             var userRole = User.FindFirstValue(ClaimTypes.Role);
@@ -108,17 +147,39 @@ namespace NextStep.API.Controllers
                 _ => false
             };
 
-            var result = await _applicationService.GetInboxApplicationsAsync(departmentId, isOrderCreatingDepartment);
+            var result = await _applicationService.GetInboxApplicationsAsync(
+                departmentId,
+                isOrderCreatingDepartment,
+                search,
+                requestType,
+                status,
+                page,
+                limit);
+
             return Ok(result);
         }
 
         [HttpGet("outbox")]
-        public async Task<IActionResult> GetOutbox()
+        public async Task<IActionResult> GetOutbox(
+            [FromQuery] string search = null,
+            [FromQuery] int? requestType = null,
+            [FromQuery] string status = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int limit = 10)
         {
             var departmentId = int.Parse(User.FindFirstValue("DepartmentId"));
-            var result = await _applicationService.GetOutboxApplicationsAsync(departmentId);
+
+            var result = await _applicationService.GetOutboxApplicationsAsync(
+                departmentId,
+                search,
+                requestType,
+                status,
+                page,
+                limit);
+
             return Ok(result);
         }
+
 
         /*  [HttpGet("{id}")]
           public async Task<IActionResult> GetApplication(int id)

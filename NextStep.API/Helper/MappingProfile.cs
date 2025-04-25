@@ -12,14 +12,43 @@ namespace NextStep.API.Helper
     {
         public MappingProfile()
         {
+            // Mapping for ApplicationType to ApplicationTypeDTO
             CreateMap<ApplicationType, ApplicationTypeDTO>()
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.ApplicationTypeID))
-                .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.ApplicationTypeName));
-          
-            CreateMap<CreateApplicationTypeDTO, ApplicationType>();
-            CreateMap<UpdateApplicationTypeDTO, ApplicationType>();
+                .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.ApplicationTypeName))
+                .ForMember(dest => dest.Requierments, opt => opt.MapFrom(src => src.Requierments.Select(r => new RequiermentDTO
+                {
+                    Id = r.Requierment.Id,
+                    Name = r.Requierment.RequiermentName
+                })))
+                .ForMember(dest => dest.Steps, opt => opt.MapFrom(src => src.Steps.Select(s => new StepDTO
+                {
+                    Id = s.StepsID,
+                    DepartmentId = s.DepartmentID,
+                    StepOrder = s.StepOrder
+                })))
+                .ReverseMap();
 
-            CreateMap<Application, ApplicationListItemDTO>()
+            // Mapping for CreateApplicationTypeDTO to ApplicationType
+            CreateMap<CreateApplicationTypeDTO, ApplicationType>()
+                .ForMember(dest => dest.Steps, opt => opt.Ignore()) // Steps are handled separately
+                .ForMember(dest => dest.Requierments, opt => opt.Ignore()); // Requirements are handled separately
+
+            // Mapping for UpdateApplicationTypeDTO to ApplicationType
+            CreateMap<UpdateApplicationTypeDTO, ApplicationType>()
+                .ForMember(dest => dest.Steps, opt => opt.Ignore())
+                .ForMember(dest => dest.Requierments, opt => opt.Ignore());
+
+            // Mapping for CreateRequiermentDTO to Requierments
+            CreateMap<CreateRequiermentDTO, Requierments>();
+
+            // Mapping for CreateStepsDTO to Steps
+            CreateMap<CreateStepsDTO, Steps>()
+                .ForMember(dest => dest.StepsID, opt => opt.Ignore()) // StepsID is auto-generated
+                .ForMember(dest => dest.ApplicationTypeID, opt => opt.Ignore()); // ApplicationTypeID is set separately
+        
+
+        CreateMap<Application, ApplicationListItemDTO>()
                 .ForMember(dest => dest.ApplicationId, opt => opt.MapFrom(src => src.ApplicationID))
                 .ForMember(dest => dest.ApplicationType, opt => opt.MapFrom(src => src.ApplicationType.ApplicationTypeName))
                 .ForMember(dest => dest.SendingDepartment, opt => opt.MapFrom(src => src.Steps.Department.DepartmentName))

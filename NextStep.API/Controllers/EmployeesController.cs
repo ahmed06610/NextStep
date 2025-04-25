@@ -45,5 +45,13 @@ namespace NextStep.API.Controllers
                 return NotFound();
             return NoContent();
         }
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var employee = await _employeeService.GetByIdAsync(id);
+            if (employee == null)
+                return NotFound();
+            return Ok(employee);
+        }
     }
 }

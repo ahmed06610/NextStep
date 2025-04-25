@@ -77,13 +77,27 @@ namespace NextStep.EF.Data
                 .HasForeignKey(s => s.DepartmentID)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Configure Steps relationship with ApplicationType
-        
+            // Configure ApplicationType -> Steps relationship
             modelBuilder.Entity<Steps>()
                 .HasOne(s => s.ApplicationType)
                 .WithMany(at => at.Steps)
                 .HasForeignKey(s => s.ApplicationTypeID)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete Steps when ApplicationType is deleted
+
+            // Configure ApplicationType -> RequiermentsApplicationType relationship
+            modelBuilder.Entity<RequiermentsApplicationType>()
+                .HasOne(rat => rat.ApplicationType)
+                .WithMany(at => at.Requierments)
+                .HasForeignKey(rat => rat.ApplicationTypeId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete RequiermentsApplicationType when ApplicationType is deleted
+
+            // Configure RequiermentsApplicationType -> Requierments relationship
+            modelBuilder.Entity<RequiermentsApplicationType>()
+                .HasOne(rat => rat.Requierment)
+                .WithMany()
+                .HasForeignKey(rat => rat.RequiermentId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete Requierments when RequiermentsApplicationType is deleted
+
 
 
             modelBuilder.Entity<RequiermentsApplicationType>().HasData(
@@ -250,6 +264,7 @@ namespace NextStep.EF.Data
 
             // سيمنار المناقشة ليس له متطلبات
             );
+
         }
     }
 

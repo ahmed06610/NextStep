@@ -9,6 +9,7 @@ namespace NextStep.Core.DTOs.Application
     public class ApplicationDetailsDTO
     {
         public int ApplicationId { get; set; }
+        public string ApplicationName { get; set; }
         public DateTime CreatedDate { get; set; }
         public string CreatedDepartment { get; set; }
         public string Notes { get; set; }

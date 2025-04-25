@@ -163,12 +163,10 @@ namespace NextStep.API
                 }
             }
 
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
+         
                 app.UseSwagger();
                 app.UseSwaggerUI();
-            }
+            
 
             app.UseHttpsRedirection();
             app.UseCors("AllowAllOrigins");
@@ -224,10 +222,10 @@ namespace NextStep.API
                 var steps = new List<Steps>
                 {
                     // ApplicationTypeID 1
-                    new Steps { ApplicationTypeID = 1, DepartmentID = 7, StepOrder = 1 },
+                  /*  new Steps { ApplicationTypeID = 1, DepartmentID = 7, StepOrder = 1 },
                     new Steps { ApplicationTypeID = 1, DepartmentID = 5, StepOrder = 2 },
                     new Steps { ApplicationTypeID = 1, DepartmentID = 2, StepOrder = 3 },
-                    new Steps { ApplicationTypeID = 1, DepartmentID = 1, StepOrder = 4 },
+                    new Steps { ApplicationTypeID = 1, DepartmentID = 1, StepOrder = 4 },*/
 
                     // ApplicationTypeID 2
                     new Steps { ApplicationTypeID = 2, DepartmentID = 7, StepOrder = 1 },

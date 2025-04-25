@@ -26,6 +26,8 @@ namespace NextStep.EF.Repositories
             ApplicationType = new ApplicationTypeRepository(_context);
             Steps = new StepsRepository(_context);
             Requierments = new RequiermentsRepository(_context);
+            RequiermentsApplicationType= new RequiermentsApplicationTypeRepository(_context);
+
         }
 
         public IEmployeeRepository Employee { get; private set; }

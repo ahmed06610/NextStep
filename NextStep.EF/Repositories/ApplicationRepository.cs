@@ -19,9 +19,15 @@ namespace NextStep.EF.Repositories
                 .Include(a => a.Steps)
                 .FirstOrDefaultAsync(a => a.ApplicationID == id);
         }
-        public async Task<List<Application>> GetByCurrentDepartmentAsync(int departmentId)
+        public async Task<List<Application>> GetByCurrentDepartmentAsync(
+     int departmentId,
+     string search = null,
+     int? requestType = null,
+     string status = null,
+     int page = 1,
+     int limit = 10)
         {
-            return await _context.Applications
+            var query = _context.Applications
                 .Include(a => a.ApplicationType)
                 .Include(a => a.Steps)
                     .ThenInclude(s => s.Department)
@@ -32,21 +38,51 @@ namespace NextStep.EF.Repositories
                 .Where(a =>
                     // Applications where this department is the current step
                     (a.Steps.DepartmentID == departmentId &&
-                     a.Status == "قيد_التنفيذ" ||
+                     a.Status == "قيد_التنفيذ") ||
 
-                    // OR applications that were finalized (approved/rejected) 
+                    // OR applications that were finalized (approved/rejected)
                     // AND were originally created by this department
                     (a.CreatedByUser.DepartmentID == departmentId &&
-                     (a.Status == "مقبول" ||
-                      a.Status == "مرفوض"))
-                ))
+                     (a.Status == "مقبول" || a.Status == "مرفوض"))
+                )
+                .AsQueryable();
+
+            // Apply search filter
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(a => a.ApplicationID.ToString().Contains(search) ||
+                                         a.ApplicationType.ApplicationTypeName.Contains(search));
+            }
+
+            // Apply request type filter
+            if (requestType.HasValue)
+            {
+                query = query.Where(a => a.ApplicationTypeID == requestType.Value);
+            }
+
+            // Apply status filter
+            if (!string.IsNullOrEmpty(status))
+            {
+                query = query.Where(a => a.Status == status);
+            }
+
+            // Pagination
+            return await query
                 .OrderByDescending(a => a.CreatedDate)
+                .Skip((page - 1) * limit)
+                .Take(limit)
                 .ToListAsync();
         }
 
-        public async Task<List<Application>> GetByCreatorOrActionDepartmentAsync(int departmentId)
+        public async Task<List<Application>> GetByCreatorOrActionDepartmentAsync(
+            int departmentId,
+            string search = null,
+            int? requestType = null,
+            string status = null,
+            int page = 1,
+            int limit = 10)
         {
-            return await _context.Applications
+            var query = _context.Applications
                 .Include(a => a.ApplicationType)
                 .Include(a => a.Steps)
                     .ThenInclude(s => s.Department)
@@ -57,15 +93,42 @@ namespace NextStep.EF.Repositories
                 .Where(a =>
                     // Applications created by this department
                     a.CreatedByUser.DepartmentID == departmentId ||
+
                     // OR applications where this department took action
                     a.ApplicationHistories.Any(h =>
                         h.Department.DepartmentID == departmentId &&
                         (h.Action == "موافقة" || h.Action == "رفض")
                     )
                 )
+                .AsQueryable();
+
+            // Apply search filter
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(a => a.ApplicationID.ToString().Contains(search) ||
+                                         a.ApplicationType.ApplicationTypeName.Contains(search));
+            }
+
+            // Apply request type filter
+            if (requestType.HasValue)
+            {
+                query = query.Where(a => a.ApplicationTypeID == requestType.Value);
+            }
+
+            // Apply status filter
+            if (!string.IsNullOrEmpty(status))
+            {
+                query = query.Where(a => a.Status == status);
+            }
+
+            // Pagination
+            return await query
                 .OrderByDescending(a => a.CreatedDate)
+                .Skip((page - 1) * limit)
+                .Take(limit)
                 .ToListAsync();
         }
+
     }
 
 }

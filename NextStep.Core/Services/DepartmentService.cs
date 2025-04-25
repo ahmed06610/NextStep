@@ -19,27 +19,51 @@ namespace NextStep.Core.Services
 
         public async Task<IEnumerable<DepartmentDTO>> GetAllAsync()
         {
-            var departments = await _unitOfWork.Department.GetAllAsync();
-            return _mapper.Map<IEnumerable<DepartmentDTO>>(departments);
+            try
+            {
+                var departments = await _unitOfWork.Department.GetAllAsync();
+                return _mapper.Map<IEnumerable<DepartmentDTO>>(departments);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                throw new Exception("An error occurred while fetching departments.", ex);
+            }
         }
 
         public async Task<DepartmentDTO> CreateAsync(CreateDepartmentDTO dto)
         {
-            var department = _mapper.Map<Department>(dto);
-            await _unitOfWork.Department.AddAsync(department);
-            await _unitOfWork.CompleteAsync();
-            return _mapper.Map<DepartmentDTO>(department);
+            try
+            {
+                var department = _mapper.Map<Department>(dto);
+                await _unitOfWork.Department.AddAsync(department);
+                await _unitOfWork.CompleteAsync();
+                return _mapper.Map<DepartmentDTO>(department);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                throw new Exception("An error occurred while creating the department.", ex);
+            }
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var department = await _unitOfWork.Department.GetByIdAsync(id);
-            if (department == null)
-                return false;
+            try
+            {
+                var department = await _unitOfWork.Department.GetByIdAsync(id);
+                if (department == null)
+                    return false;
 
-            await _unitOfWork.Department.DeleteAsync(department);
-            await _unitOfWork.CompleteAsync();
-            return true;
+                await _unitOfWork.Department.DeleteAsync(department);
+                await _unitOfWork.CompleteAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                throw new Exception("An error occurred while deleting the department.", ex);
+            }
         }
     }
 }

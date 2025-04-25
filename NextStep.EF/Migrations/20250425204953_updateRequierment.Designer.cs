@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NextStep.EF.Data;
 
@@ -11,9 +12,11 @@ using NextStep.EF.Data;
 namespace NextStep.EF.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250425204953_updateRequierment")]
+    partial class updateRequierment
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -200,7 +203,7 @@ namespace NextStep.EF.Migrations
 
                     b.HasIndex("StudentID");
 
-                    b.ToTable("Applications", (string)null);
+                    b.ToTable("Applications");
                 });
 
             modelBuilder.Entity("NextStep.Core.Models.ApplicationHistory", b =>
@@ -234,7 +237,7 @@ namespace NextStep.EF.Migrations
 
                     b.HasIndex("ApplicationID");
 
-                    b.ToTable("ApplicationHistories", (string)null);
+                    b.ToTable("ApplicationHistories");
                 });
 
             modelBuilder.Entity("NextStep.Core.Models.ApplicationType", b =>
@@ -260,7 +263,7 @@ namespace NextStep.EF.Migrations
 
                     b.HasIndex("CreatedByDeptId");
 
-                    b.ToTable("ApplicationTypes", (string)null);
+                    b.ToTable("ApplicationTypes");
                 });
 
             modelBuilder.Entity("NextStep.Core.Models.ApplicationUser", b =>
@@ -342,7 +345,7 @@ namespace NextStep.EF.Migrations
 
                     b.HasKey("DepartmentID");
 
-                    b.ToTable("Departments", (string)null);
+                    b.ToTable("Departments");
                 });
 
             modelBuilder.Entity("NextStep.Core.Models.Employee", b =>
@@ -366,7 +369,7 @@ namespace NextStep.EF.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Employees", (string)null);
+                    b.ToTable("Employees");
                 });
 
             modelBuilder.Entity("NextStep.Core.Models.Requierments", b =>
@@ -383,7 +386,7 @@ namespace NextStep.EF.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Requierments", (string)null);
+                    b.ToTable("Requierments");
                 });
 
             modelBuilder.Entity("NextStep.Core.Models.RequiermentsApplicationType", b =>
@@ -406,7 +409,7 @@ namespace NextStep.EF.Migrations
 
                     b.HasIndex("RequiermentId");
 
-                    b.ToTable("RequiermentsApplicationTypes", (string)null);
+                    b.ToTable("RequiermentsApplicationTypes");
 
                     b.HasData(
                         new
@@ -1184,7 +1187,7 @@ namespace NextStep.EF.Migrations
 
                     b.HasIndex("DepartmentID");
 
-                    b.ToTable("Steps", (string)null);
+                    b.ToTable("Steps");
                 });
 
             modelBuilder.Entity("NextStep.Core.Models.Student", b =>
@@ -1207,7 +1210,7 @@ namespace NextStep.EF.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Students", (string)null);
+                    b.ToTable("Students");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

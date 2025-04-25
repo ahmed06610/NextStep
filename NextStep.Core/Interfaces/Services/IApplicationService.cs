@@ -17,7 +17,20 @@ namespace NextStep.Core.Interfaces.Services
         Task<List<ApplicationStudent>> GetApplicationsForStuent(int StudentId);
 
 
-        Task<InboxResponseDTO> GetInboxApplicationsAsync(int departmentId, bool isOrderCreatingDepartment);
-        Task<OutboxResponseDTO> GetOutboxApplicationsAsync(int departmentId);
+        Task<InboxResponseDTO> GetInboxApplicationsAsync(
+           int departmentId,
+           bool isOrderCreatingDepartment,
+           string search = null,
+           int? requestType = null,
+           string status = null,
+           int page = 1,
+           int limit = 10);
+        Task<OutboxResponseDTO> GetOutboxApplicationsAsync(
+                int departmentId,
+                string search = null,
+                int? requestType = null,
+                string status = null,
+                int page = 1,
+                int limit = 10);
     }
 }
