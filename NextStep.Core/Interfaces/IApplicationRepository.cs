@@ -5,20 +5,16 @@ namespace NextStep.Core.Interfaces
     public interface IApplicationRepository : IBaseRepository<Application>
     {
         Task<Application> GetByIdWithStepsAsync(int id);
-        Task<List<Application>> GetByCurrentDepartmentAsync(
+        IQueryable<Application> GetByCurrentDepartmentQueryable(
             int departmentId,
             string search = null,
             int? requestType = null,
-            string status = null,
-            int page = 1,
-            int limit = 10);
-        Task<List<Application>> GetByCreatorOrActionDepartmentAsync(
+            string status = null);
+        IQueryable<Application> GetByCreatorOrActionDepartmentQueryable(
                    int departmentId,
                    string search = null,
                    int? requestType = null,
-                   string status = null,
-                   int page = 1,
-                   int limit = 10);
+                   string status = null);
 
     }
 

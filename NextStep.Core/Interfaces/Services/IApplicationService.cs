@@ -13,7 +13,7 @@ namespace NextStep.Core.Interfaces.Services
         Task<Application> CreateApplicationAsync(CreateApplicationDTO dto, int employeeId);
         Task<bool> ApproveApplicationAsync(ApplicationActionDTO dto, int employeeId, int departmentId);
         Task<bool> RejectApplicationAsync(ApplicationActionDTO dto, int employeeId, int departmentId);
-        Task<ApplicationDetailsDTO> GetApplicationDetailsAsync(int applicationId);
+        Task<ApplicationDetailsDTO> GetApplicationDetailsAsync(int applicationId,int EmpId);
         Task<List<ApplicationStudent>> GetApplicationsForStuent(int StudentId);
 
 

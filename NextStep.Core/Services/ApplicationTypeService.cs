@@ -87,6 +87,9 @@ namespace NextStep.Core.Services
             {
                 // Map the ApplicationType from the DTO
                 var type = _mapper.Map<ApplicationType>(dto);
+                // Set the CreatedByDeptId if not provided
+                type.CreatedByDeptId = dto.createStepsDTOs.FirstOrDefault()?.DepartmentId ?? 0;
+
 
                 // Add the ApplicationType to the database
                 await _unitOfWork.ApplicationType.AddAsync(type);
@@ -161,12 +164,14 @@ namespace NextStep.Core.Services
                 await _unitOfWork.CompleteAsync();
 
                 // Delete existing requirements and their associations
-                var existingRequierments = await _unitOfWork.RequiermentsApplicationType.GetQueryable(rat => rat.ApplicationTypeId == dto.Id).ToListAsync();
+                var existingRequierments = await _unitOfWork.RequiermentsApplicationType.GetQueryable(rat => rat.ApplicationTypeId == dto.Id)
+                    .Include(ra=>ra.Requierment).ToListAsync();
                 foreach (var reqAppType in existingRequierments)
                 {
                     var req=reqAppType.Requierment;
                     await _unitOfWork.RequiermentsApplicationType.DeleteAsync(reqAppType);
                     await _unitOfWork.Requierments.DeleteAsync(req);
+
                 }
                 await _unitOfWork.CompleteAsync();
 

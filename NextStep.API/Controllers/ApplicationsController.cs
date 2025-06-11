@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
+using NextStep.Core.Const;
 using NextStep.Core.DTOs.Application;
 using NextStep.Core.Interfaces.Services;
 using System.Security.Claims;
@@ -15,50 +16,52 @@ namespace NextStep.API.Controllers
     public class ApplicationsController : ControllerBase
     {
         private readonly IApplicationService _applicationService;
+        private readonly IApplicationTypeService _applicationTypeService;
         private readonly IFileService _fileService;
         private readonly IAuthService _authService;
 
         public ApplicationsController(
             IApplicationService applicationService,
             IFileService fileService,
-            IAuthService authService)
+            IAuthService authService,
+            IApplicationTypeService applicationTypeService)
         {
             _applicationService = applicationService;
             _fileService = fileService;
             _authService = authService;
+            _applicationTypeService = applicationTypeService;
         }
         [HttpGet("{id}/download")]
         public async Task<IActionResult> DownloadFile(int id)
         {
             try
             {
-                // Retrieve the application record
-                var application = await _applicationService.GetApplicationDetailsAsync(id);
+                var application = await _applicationService.GetApplicationDetailsAsync(id, 0);
                 if (application == null)
                     return NotFound("Application not found.");
 
-                // Get the file path from the FileUpload property
                 var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", application.FileUrl);
-
-                // Check if the file exists
                 if (!System.IO.File.Exists(filePath))
                     return NotFound("File not found.");
 
-                // Get the file's content type
-                var contentType = "application/octet-stream"; // Default content type
+                var contentType = "application/octet-stream";
                 new FileExtensionContentTypeProvider().TryGetContentType(filePath, out contentType);
-
-                // Return the file as a response
                 var fileName = Path.GetFileName(filePath);
+
+                // Set headers to prevent caching
+                Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate";
+                Response.Headers["Pragma"] = "no-cache";
+                Response.Headers["Expires"] = "0";
+
                 return PhysicalFile(filePath, contentType, fileName);
             }
             catch (Exception ex)
             {
-                // Log the exception
                 Console.WriteLine($"Error in DownloadFile: {ex.Message}");
                 return StatusCode(500, "An error occurred while processing your request.");
             }
         }
+
 
 
         [HttpGet("GetAppsForStudent")]
@@ -78,7 +81,15 @@ namespace NextStep.API.Controllers
         [HttpGet("{id}/details")]
         public async Task<IActionResult> GetApplicationDetails(int id)
         {
-            var applicationDetails = await _applicationService.GetApplicationDetailsAsync(id);
+            var loggedid = int.Parse(User.FindFirst("LoggedId")?.Value);
+            // get the role of the user
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+            var empid = 0;
+            if (userRole != "طالب")
+            {
+                empid = loggedid ;
+            }
+            var applicationDetails = await _applicationService.GetApplicationDetailsAsync(id,empid);
             if (applicationDetails == null)
                 return NotFound();
 
@@ -89,13 +100,28 @@ namespace NextStep.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateApplication([FromForm] CreateApplicationDTO dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
 
-            var employeeId = int.Parse(User.FindFirst("LoggedId")?.Value);
-            var application = await _applicationService.CreateApplicationAsync(dto, employeeId);
+                var employeeId = int.Parse(User.FindFirst("LoggedId")?.Value);
+                var departmentId = int.Parse(User.FindFirstValue("DepartmentId"));
+                var types = (await _applicationTypeService.GetAllAsync(departmentId)).Select(t=>t.Id);
+                if (types.Contains(dto.ApplicationTypeID) == false)
+                    return Unauthorized();
+                var application = await _applicationService.CreateApplicationAsync(dto, employeeId);
+                return Ok(application.ApplicationID);
 
-            return Ok();
+
+            }
+            catch (Exception  ex)
+            {
+
+                return BadRequest(ex.Message);
+            }
+
+
         }
 
         [Authorize]

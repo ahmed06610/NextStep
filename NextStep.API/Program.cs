@@ -31,13 +31,16 @@ namespace NextStep.API
             builder.Services.AddControllers();
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowAllOrigins",
-                    builder =>
-                    {
-                        builder.AllowAnyOrigin()
-                               .AllowAnyMethod()
-                               .AllowAnyHeader();
-                    });
+                options.AddPolicy("AllowFrontend", policy =>
+                {
+                    policy.WithOrigins(
+                        "http://localhost:3000",
+                        "https://next-step-ten.vercel.app"
+                    )
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials(); // Keep this if you're using SignalR with authentication
+                });
             });
             builder.Services.Configure<JWT>(builder.Configuration.GetSection("JWT"));
 
@@ -105,6 +108,7 @@ namespace NextStep.API
             builder.Services.AddScoped<IApplicationService, ApplicationService>();
             builder.Services.AddScoped<IDepartmentService, DepartmentService>();
             builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+            builder.Services.AddScoped<IReportService, ReportService>();
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -169,7 +173,7 @@ namespace NextStep.API
             
 
             app.UseHttpsRedirection();
-            app.UseCors("AllowAllOrigins");
+            app.UseCors("AllowFrontend");
 
             app.UseAuthentication();
             app.UseAuthorization();
@@ -222,10 +226,10 @@ namespace NextStep.API
                 var steps = new List<Steps>
                 {
                     // ApplicationTypeID 1
-                  /*  new Steps { ApplicationTypeID = 1, DepartmentID = 7, StepOrder = 1 },
+                    new Steps { ApplicationTypeID = 1, DepartmentID = 7, StepOrder = 1 },
                     new Steps { ApplicationTypeID = 1, DepartmentID = 5, StepOrder = 2 },
                     new Steps { ApplicationTypeID = 1, DepartmentID = 2, StepOrder = 3 },
-                    new Steps { ApplicationTypeID = 1, DepartmentID = 1, StepOrder = 4 },*/
+                    new Steps { ApplicationTypeID = 1, DepartmentID = 1, StepOrder = 4 },
 
                     // ApplicationTypeID 2
                     new Steps { ApplicationTypeID = 2, DepartmentID = 7, StepOrder = 1 },

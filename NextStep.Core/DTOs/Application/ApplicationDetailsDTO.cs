@@ -17,6 +17,9 @@ namespace NextStep.Core.DTOs.Application
         public List<HistoryItemDTO> History { get; set; }
         public List<ApplicationStepDTO> Steps { get; set; }
         public string Statue { get; set; }
+        public string StudentName { get; set; }
+        public string StudentNId { get; set; }
+        public string ApplicationContext {  get; set; }
     }
 
     public class ApplicationStepDTO

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NextStep.EF.Data;
 
@@ -11,9 +12,11 @@ using NextStep.EF.Data;
 namespace NextStep.EF.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250430215228_updateapplication")]
+    partial class updateapplication
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -185,7 +188,7 @@ namespace NextStep.EF.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("StepID")
                         .HasColumnType("int");
@@ -195,13 +198,9 @@ namespace NextStep.EF.Migrations
 
                     b.HasKey("ApplicationID");
 
-                    b.HasIndex("ApplicationTypeID")
-                        .HasDatabaseName("IX_Application_ApplicationTypeID");
+                    b.HasIndex("ApplicationTypeID");
 
                     b.HasIndex("CreatedBy");
-
-                    b.HasIndex("Status")
-                        .HasDatabaseName("IX_Application_Status");
 
                     b.HasIndex("StepID");
 

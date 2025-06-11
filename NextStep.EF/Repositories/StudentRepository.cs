@@ -17,7 +17,7 @@ namespace NextStep.EF.Repositories
         => await _context.Students.SingleOrDefaultAsync(t => t.UserId == id);
         public async Task<Student> GetByNaidAsync(string naid)
         {
-            return await _context.Students
+            return await _context.Students.Include(s=>s.User)
                 .FirstOrDefaultAsync(s => s.Naid == naid);
         }
     }

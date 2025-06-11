@@ -34,6 +34,14 @@ namespace NextStep.EF.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            //make inexing in statue of the application
+            modelBuilder.Entity<Application>()
+                .HasIndex(a => a.Status)
+                .HasDatabaseName("IX_Application_Status");
+            //make indexing in ApplicationTypeID of applicaion
+            modelBuilder.Entity<Application>()
+                .HasIndex(a => a.ApplicationTypeID)
+                .HasDatabaseName("IX_Application_ApplicationTypeID");
 
             // Configure the problematic relationship
             modelBuilder.Entity<ApplicationHistory>()

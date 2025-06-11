@@ -97,87 +97,87 @@ namespace NextStep.Core.Services
 
         public async Task<AuthResponseDTO> RegisterEmployeeAsync(RegisterEmployeeDTO model)
         {
-            var authModel = new AuthResponseDTO();
-
-            // Validate email exists
-            if (await _userManager.FindByEmailAsync(model.Email) != null)
+            try
             {
-                authModel.Message = "Email is already registered!";
-                return authModel;
+                var authModel = new AuthResponseDTO();
+
+                // Validate email exists
+                if (await _userManager.FindByEmailAsync(model.Email) != null)
+                {
+                    authModel.Message = "Email is already registered!";
+                    return authModel;
+                }
+
+                // Validate department exists
+                var department = await _unitOfWork.Department.GetByIdAsync(model.DepartmentID);
+                if (department == null)
+                {
+                    authModel.Message = "Invalid department specified";
+                    return authModel;
+                }
+
+                // Create user
+                var user = new ApplicationUser
+                {
+                    UserName = model.UserName,
+                    Email = model.Email,
+                    EmailConfirmed = true
+                };
+
+                var createResult = await _userManager.CreateAsync(user, model.Password);
+                if (!createResult.Succeeded)
+                {
+                    authModel.Message = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                    return authModel;
+                }
+
+                // Determine role based on department
+                string roleName = GetEmployeeRoleName(department.DepartmentName);
+                await _userManager.AddToRoleAsync(user, roleName);
+
+                // Create employee record
+                var employee = new Employee
+                {
+                    UserId = user.Id,
+                    DepartmentID = model.DepartmentID,
+                    Department = department,
+                    User = user
+                };
+
+                await _unitOfWork.Employee.AddAsync(employee);
+                await _unitOfWork.CompleteAsync();
+
+                // Generate token
+                var jwtToken = await CreateJwtToken(user);
+
+                return new AuthResponseDTO
+                {
+                    IsAuthenticated = true,
+                    Token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
+                    ExpiresOn = jwtToken.ValidTo,
+                    Roles = new List<string> { roleName },
+                    UserId = user.Id,
+                    Email = user.Email,
+                    Name = user.UserName,
+                    LoggedId = employee.EmpID,
+                    Role = roleName,
+                    Department = department.DepartmentName
+                };
             }
-
-            // Validate department exists
-            var department = await _unitOfWork.Department.GetByIdAsync(model.DepartmentID);
-            if (department == null)
+            catch (Exception ex)
             {
-                authModel.Message = "Invalid department specified";
-                return authModel;
+
+                throw ex;
             }
-
-            // Create user
-            var user = new ApplicationUser
-            {
-                UserName = model.UserName,
-                Email = model.Email,
-                EmailConfirmed = true
-            };
-
-            var createResult = await _userManager.CreateAsync(user, model.Password);
-            if (!createResult.Succeeded)
-            {
-                authModel.Message = string.Join(", ", createResult.Errors.Select(e => e.Description));
-                return authModel;
-            }
-
-            // Determine role based on department
-            string roleName = GetEmployeeRoleName(department.DepartmentName);
-            await _userManager.AddToRoleAsync(user, roleName);
-
-            // Create employee record
-            var employee = new Employee
-            {
-                UserId = user.Id,
-                DepartmentID = model.DepartmentID,
-                Department = department,
-                User = user
-            };
-
-            await _unitOfWork.Employee.AddAsync(employee);
-            await _unitOfWork.CompleteAsync();
-
-            // Generate token
-            var jwtToken = await CreateJwtToken(user);
-
-            return new AuthResponseDTO
-            {
-                IsAuthenticated = true,
-                Token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
-                ExpiresOn = jwtToken.ValidTo,
-                Roles = new List<string> { roleName },
-                UserId = user.Id,
-                Email = user.Email,
-                Name = user.UserName,
-                LoggedId = employee.EmpID,
-                Role = roleName,
-                Department = department.DepartmentName
-            };
+           
         }
 
         private string GetEmployeeRoleName(string departmentName)
         {
-            var role = departmentName switch
-            {
-                "مجلس الكليه" => SystemRoles.CollegeCouncilEmployee,
-                "لجنه الدرسات العليا" => SystemRoles.GraduateStudiesCommitteeEmployee,
-                "حسابات علميه" => SystemRoles.ScientificAccountsEmployee,
-                "إدارة الدرسات العليا" => SystemRoles.GraduateStudiesManagementEmployee,
-                "ذكاء اصطناعي" => SystemRoles.ArtificialIntelligenceEmployee,
-                "نظم المعلومات" => SystemRoles.InformationSystemsEmployee,
-                "علوم حاسب" => SystemRoles.ComputerScienceEmployee,
-                _ => throw new ArgumentException("Invalid department")
-            };
+            var role = _unitOfWork.Department.GetAllAsync()
+                .Result.FirstOrDefault(d => d.DepartmentName == departmentName)?.DepartmentName;
 
-            return GetRoleDisplayName(role);
+            return (role);
         }
         private static string GetRoleDisplayName(SystemRoles role)
         {

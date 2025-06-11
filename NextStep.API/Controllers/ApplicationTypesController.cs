@@ -39,6 +39,7 @@ namespace NextStep.API.Controllers
             return Ok(type);
         }
 
+        [Authorize(Roles = "ادمن")]
         [HttpPost]
         public async Task<ActionResult<ApplicationTypeDTO>> Create([FromBody] CreateApplicationTypeDTO dto)
         {
@@ -49,6 +50,7 @@ namespace NextStep.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = createdType.Id }, createdType);
         }
 
+        [Authorize(Roles = "ادمن")]
         [HttpPut]
         public async Task<ActionResult<ApplicationTypeDTO>> Update([FromBody] UpdateApplicationTypeDTO dto)
         {
@@ -66,8 +68,8 @@ namespace NextStep.API.Controllers
             }
         }
 
-      
 
+        [Authorize(Roles = "ادمن")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

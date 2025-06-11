@@ -11,6 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using NextStep.Core.Helper;
 
 namespace NextStep.Core.Services
 {
@@ -46,7 +47,7 @@ namespace NextStep.Core.Services
                 {
                     var steps = await _unitOfWork.Steps.GetQueryable(s => s.ApplicationTypeID == app.ApplicationTypeID).ToListAsync();
                     var step = steps.FirstOrDefault(s => s.StepsID == app.StepID);
-                    var current = steps.IndexOf(step);
+                    var current = steps.IndexOf(step)+1;
 
                     var pro = current >= 0 && steps.Count > 0 ? (decimal)current / steps.Count : 0;
 
@@ -75,12 +76,14 @@ namespace NextStep.Core.Services
             try
             {
                 var student = await _unitOfWork.Student.GetByNaidAsync(dto.StudentNaid);
+               
+
 
                 if (student == null)
                 {
                     var registerDto = new RegisterStudentDTO
                     {
-                        UserName = dto.StudentNaid,
+                        UserName = dto.StudentName,
                         Email = $"{dto.StudentNaid}@univ.edu",
                         Password = dto.StudentNaid,
                         Naid = dto.StudentNaid
@@ -88,6 +91,24 @@ namespace NextStep.Core.Services
 
                     var authResult = await _authService.RegisterStudentAsync(registerDto);
                     student = await _unitOfWork.Student.GetByAppUserIdAsync(authResult.UserId);
+                }
+                else
+                {
+                    if (student.User.UserName != dto.StudentName ||(student.User.PhoneNumber!=null  && student.User.PhoneNumber!=dto.StudentPhone))
+                    {
+                        throw new Exception("الطالب موجود بالفعل ولكن اسم الطالب أو رقم الهاتف غير متطابق مع البيانات المدخلة. يرجى التأكد من صحة البيانات المدخلة.");
+
+                    }
+                }
+
+                var appsForStudent = await _unitOfWork.Application.GetQueryable(a => a.StudentID == student.StudentID 
+                && a.ApplicationTypeID==dto.ApplicationTypeID
+                && a.Status != AppStatues.مرفوض.ToString()
+                )
+                    .FirstOrDefaultAsync();
+                if (appsForStudent != null)
+                {
+                    throw new Exception("الطالب لديه طلبات سابقة لهذا النوع من الطلبات جاريه الان او تم الموافقه عليها. لا يمكن إنشاء طلب جديد في نفس الوقت.");
                 }
 
                 var initialStep = await _unitOfWork.Steps.GetInitialStepByApplicationType(dto.ApplicationTypeID);
@@ -102,7 +123,7 @@ namespace NextStep.Core.Services
                     ApplicationTypeID = dto.ApplicationTypeID,
                     Status = AppStatues.قيد_التنفيذ.ToString(),
                     CreatedBy = employeeId,
-                    CreatedDate = DateTime.Now,
+                    CreatedDate = TimeHelper.NowInEgypt,
                     StudentID = student.StudentID,
                     FileUpload = filePath,
                     Notes = dto.Notes,
@@ -116,10 +137,10 @@ namespace NextStep.Core.Services
                 var history = new ApplicationHistory
                 {
                     ApplicationID = application.ApplicationID,
-                    ActionDate = DateTime.Now,
+                    ActionDate = TimeHelper.NowInEgypt,
                     ActionByDeptId = employee.DepartmentID,
                     Action = "إنشاء الطلب",
-                    Notes = "تم إنشاء الطلب"
+                    Notes = dto.Notes
                 };
 
                 await _unitOfWork.ApplicationHistory.AddAsync(history);
@@ -131,12 +152,13 @@ namespace NextStep.Core.Services
             {
                 // Log the exception
                 Console.WriteLine($"Error in CreateApplicationAsync: {ex.Message}");
-                throw;
+                throw new Exception(ex.Message);
             }
         }
 
         public async Task<bool> ApproveApplicationAsync(ApplicationActionDTO dto, int employeeId, int departmentId)
         {
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
                 var application = await _unitOfWork.Application.GetByIdWithStepsAsync(dto.ApplicationID);
@@ -144,6 +166,11 @@ namespace NextStep.Core.Services
 
                 if (application.Steps.DepartmentID != departmentId)
                     return false;
+                var apphis = await _unitOfWork.ApplicationHistory.GetQueryable(h => h.ApplicationID == dto.ApplicationID).OrderBy(h => h.ActionDate).LastOrDefaultAsync();
+                if (application.Status != AppStatues.قيد_التنفيذ.ToString() || apphis.Action == "رفض")
+                {
+                    return false;
+                }
 
                 var nextStep = await _unitOfWork.Steps.GetNextStepAsync(
                     application.ApplicationTypeID,
@@ -175,7 +202,7 @@ namespace NextStep.Core.Services
                 var history = new ApplicationHistory
                 {
                     ApplicationID = application.ApplicationID,
-                    ActionDate = DateTime.Now,
+                    ActionDate = TimeHelper.NowInEgypt,
                     ActionByDeptId = departmentId,
                     Action = "موافقة",
                     Notes = dto.Notes
@@ -183,19 +210,24 @@ namespace NextStep.Core.Services
 
                 await _unitOfWork.ApplicationHistory.AddAsync(history);
                 await _unitOfWork.CompleteAsync();
+                await transaction.CommitAsync();
+
 
                 return true;
             }
             catch (Exception ex)
             {
                 // Log the exception
+                await transaction.RollbackAsync();
+
                 Console.WriteLine($"Error in ApproveApplicationAsync: {ex.Message}");
-                throw;
+                throw new Exception( ex.Message);
             }
         }
 
         public async Task<bool> RejectApplicationAsync(ApplicationActionDTO dto, int employeeId, int departmentId)
         {
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
                 var application = await _unitOfWork.Application.GetByIdWithStepsAsync(dto.ApplicationID);
@@ -203,6 +235,12 @@ namespace NextStep.Core.Services
 
                 if (application.Steps.DepartmentID != departmentId)
                     return false;
+                var apphis = await _unitOfWork.ApplicationHistory.GetQueryable(h => h.ApplicationID == dto.ApplicationID).OrderBy(h=>h.ActionDate).LastOrDefaultAsync();
+
+                if (application.Status != AppStatues.قيد_التنفيذ.ToString() || apphis.Action == "رفض")
+                {
+                    return false;
+                }
 
                 if (dto.Attachment != null)
                 {
@@ -218,10 +256,11 @@ namespace NextStep.Core.Services
                 application.Status = AppStatues.مرفوض.ToString();
                 _unitOfWork.Application.Update(application);
 
+
                 var history = new ApplicationHistory
                 {
                     ApplicationID = application.ApplicationID,
-                    ActionDate = DateTime.Now,
+                    ActionDate = TimeHelper.NowInEgypt,
                     ActionByDeptId = departmentId,
                     Action = "رفض",
                     Notes = dto.Notes
@@ -230,13 +269,17 @@ namespace NextStep.Core.Services
                 await _unitOfWork.ApplicationHistory.AddAsync(history);
                 await _unitOfWork.CompleteAsync();
 
+                await transaction.CommitAsync();
+
+
                 return true;
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 // Log the exception
                 Console.WriteLine($"Error in RejectApplicationAsync: {ex.Message}");
-                throw;
+                throw new Exception(ex.Message);
             }
         }
 
@@ -251,48 +294,50 @@ namespace NextStep.Core.Services
         {
             try
             {
-                // Fetch the data from the repository
-                var applications = await _unitOfWork.Application.GetByCurrentDepartmentAsync(departmentId);
+                var query = _unitOfWork.Application.GetByCurrentDepartmentQueryable(departmentId);
 
-                // Apply search filter
                 if (!string.IsNullOrEmpty(search))
                 {
-                    applications = applications.Where(a =>
+                    query = query.Where(a =>
                         a.ApplicationID.ToString().Contains(search) ||
-                        a.ApplicationType.ApplicationTypeName.Contains(search)).ToList();
+                        a.ApplicationType.ApplicationTypeName.Contains(search));
                 }
 
-                // Apply request type filter
                 if (requestType.HasValue)
                 {
-                    applications = applications.Where(a => a.ApplicationTypeID == requestType.Value).ToList();
+                    query = query.Where(a => a.ApplicationTypeID == requestType.Value);
                 }
 
-                // Apply status filter
                 if (!string.IsNullOrEmpty(status))
                 {
-                    applications = applications.Where(a => a.Status == status).ToList();
+                    if (status.Contains("طلب") || status.Contains("قيد"))
+                        status = AppStatues.قيد_التنفيذ.ToString();
+                    else if (status.Contains("مرفوض"))
+                        status = AppStatues.مرفوض.ToString();
+                    else if (status.Contains("مقبول"))
+                        status = AppStatues.مقبول.ToString();
+
+                    query = query.Where(a => a.Status == status);
                 }
 
-                // Pagination
-                var totalApplications = applications.Count;
-                applications = applications
+                var totalApplications = await query.CountAsync();
+
+                var applications = await query
+                    .OrderByDescending(a => a.CreatedDate)
                     .Skip((page - 1) * limit)
                     .Take(limit)
-                    .ToList();
+                    .ToListAsync();
 
-                // Prepare the summary
                 var summary = new InboxSummaryDTO
                 {
                     TotalApplications = totalApplications,
-                    NewApplications = applications.Count(a => a.Status == AppStatues.قيد_التنفيذ.ToString()),
+                    NewApplications = query.Count(a => a.Status == AppStatues.قيد_التنفيذ.ToString()),
                     AnsweredApplications = isOrderCreatingDepartment
-                        ? applications.Count(a => a.Status == AppStatues.مقبول.ToString() ||
+                        ? query.Count(a => a.Status == AppStatues.مقبول.ToString() ||
                                                    a.Status == AppStatues.مرفوض.ToString())
                         : null
                 };
 
-                // Prepare the application items
                 var applicationItems = applications.Select(a => new ApplicationListItemDTO
                 {
                     ApplicationId = a.ApplicationID,
@@ -301,7 +346,9 @@ namespace NextStep.Core.Services
                         .OrderBy(h => h.ActionDate)
                         .FirstOrDefault()?.Department?.DepartmentName ?? "Unknown",
                     SentDate = a.CreatedDate,
-                    Status = a.Status == AppStatues.قيد_التنفيذ.ToString() ? AppStatues.طلب_جديد.ToString() : a.Status,
+                    Status = a.Status == AppStatues.قيد_التنفيذ.ToString()
+                        ? AppStatues.طلب_جديد.ToString()
+                        : a.Status,
                 }).ToList();
 
                 return new InboxResponseDTO
@@ -312,62 +359,66 @@ namespace NextStep.Core.Services
             }
             catch (Exception ex)
             {
-                // Log the exception
                 Console.WriteLine($"Error in GetInboxApplicationsAsync: {ex.Message}");
-                throw;
+                throw new Exception(ex.Message);
             }
         }
 
+
         public async Task<OutboxResponseDTO> GetOutboxApplicationsAsync(
-            int departmentId,
-            string search = null,
-            int? requestType = null,
-            string status = null,
-            int page = 1,
-            int limit = 10)
+       int departmentId,
+       string search = null,
+       int? requestType = null,
+       string status = null,
+       int page = 1,
+       int limit = 10)
         {
             try
             {
-                // Fetch the data from the repository
-                var applications = await _unitOfWork.Application.GetByCreatorOrActionDepartmentAsync(departmentId);
+                var query = _unitOfWork.Application.GetByCreatorOrActionDepartmentQueryable(departmentId);
 
-                // Apply search filter
                 if (!string.IsNullOrEmpty(search))
                 {
-                    applications = applications.Where(a =>
+                    query = query.Where(a =>
                         a.ApplicationID.ToString().Contains(search) ||
-                        a.ApplicationType.ApplicationTypeName.Contains(search)).ToList();
+                        a.ApplicationType.ApplicationTypeName.Contains(search));
                 }
 
-                // Apply request type filter
                 if (requestType.HasValue)
                 {
-                    applications = applications.Where(a => a.ApplicationTypeID == requestType.Value).ToList();
+                    query = query.Where(a => a.ApplicationTypeID == requestType.Value);
                 }
 
-                // Apply status filter
                 if (!string.IsNullOrEmpty(status))
                 {
-                    applications = applications.Where(a => a.Status == status).ToList();
+                    query = query.Where(a => a.Status == status);
                 }
 
-                // Pagination
-                var totalApplications = applications.Count;
-                applications = applications
+                var totalApplications = await query.CountAsync();
+                var ApprovedApplications =await query
+                    .Where(a => a.Status == AppStatues.مقبول.ToString())
+                    .CountAsync();
+                var  RejectedApplications =await query
+                    .Where(a => a.Status == AppStatues.مرفوض.ToString())
+                    .CountAsync();
+
+                var    InProgressApplications= await query
+                    .Where(a => a.Status == AppStatues.قيد_التنفيذ.ToString())
+                    .CountAsync();
+                var applications = await query
+                    .OrderByDescending(a => a.CreatedDate)
                     .Skip((page - 1) * limit)
                     .Take(limit)
-                    .ToList();
+                    .ToListAsync();
 
-                // Prepare the summary
                 var summary = new OutboxSummaryDTO
                 {
                     TotalApplications = totalApplications,
-                    ApprovedApplications = applications.Count(a => a.Status == AppStatues.مقبول.ToString()),
-                    RejectedApplications = applications.Count(a => a.Status == AppStatues.مرفوض.ToString()),
-                    InProgressApplications = applications.Count(a => a.Status == AppStatues.قيد_التنفيذ.ToString())
+                    ApprovedApplications = ApprovedApplications,
+                    RejectedApplications = RejectedApplications,
+                    InProgressApplications = InProgressApplications,
                 };
 
-                // Prepare the application items
                 var applicationItems = applications.Select(a => new ApplicationListItemDTO
                 {
                     ApplicationId = a.ApplicationID,
@@ -385,14 +436,14 @@ namespace NextStep.Core.Services
             }
             catch (Exception ex)
             {
-                // Log the exception
                 Console.WriteLine($"Error in GetOutboxApplicationsAsync: {ex.Message}");
-                throw;
+                throw new Exception(ex.Message);
             }
         }
 
 
-        public async Task<ApplicationDetailsDTO> GetApplicationDetailsAsync(int applicationId)
+
+        public async Task<ApplicationDetailsDTO> GetApplicationDetailsAsync(int applicationId, int empId = 0)
         {
             try
             {
@@ -404,6 +455,8 @@ namespace NextStep.Core.Services
                         .ThenInclude(s => s.Department)
                     .Include(a => a.ApplicationHistories)
                         .ThenInclude(h => h.Department)
+                    .Include(a => a.Student)
+                        .ThenInclude(s => s.User)
                     .FirstOrDefaultAsync(a => a.ApplicationID == applicationId);
 
                 if (application == null)
@@ -424,6 +477,90 @@ namespace NextStep.Core.Services
                     IsCurrent = s.StepsID == application.StepID
                 }).ToList();
 
+                if (empId != 0)
+                {
+
+                    var deptofemp = (await _unitOfWork.Employee.GetQueryable(e => e.EmpID == empId)
+                        .Include(e => e.Department)
+                        .FirstOrDefaultAsync()).DepartmentID;
+
+                    if (empId != 0 && deptofemp == application.CreatedByUser.DepartmentID && (application.Status == AppStatues.مقبول.ToString() || application.Status == AppStatues.مرفوض.ToString()))
+                    {
+                        application.IsDone = true;
+                        _unitOfWork.Application.Update(application);
+                    }
+                }
+
+                string applicationContext = "none"; // Default value
+                if (empId != 0)
+                {
+                    var employee = await _unitOfWork.Employee.GetByIdAsync(empId);
+                    if (employee != null)
+                    {
+                        // Check if the employee is the creator (outbox)
+                        bool isCreator = application.CreatedBy == empId;
+
+                        // Check if the employee's department is the current step department (inbox)
+                        bool isCurrentDepartment = application.Steps?.DepartmentID == employee.DepartmentID;
+
+                        // Determine the context
+                        if (isCreator && isCurrentDepartment)
+                        {
+                            applicationContext = "Inbox";
+                        }
+                        else if (isCreator)
+                        {
+                            applicationContext = "outbox";
+                        }
+                        else if (isCurrentDepartment)
+                        {
+                            applicationContext = "inbox";
+                        }
+                        else if (isCreator &&
+                                (application.Status == AppStatues.مقبول.ToString() ||
+                                 application.Status == AppStatues.مرفوض.ToString()))
+                        {
+                            // Completed applications created by this employee
+                            applicationContext = "outbox";
+                        }
+                    }
+                }
+
+                // ===================================================================
+                // START: NEW LOGIC FOR CREATING HISTORY WITH IN-DATE AND OUT-DATE
+                // ===================================================================
+
+                var historyDtos = new List<HistoryItemDTO>();
+                var sortedHistories = application.ApplicationHistories.OrderBy(h => h.ActionDate).ToList();
+
+                // The InDate for the very first step is the application's creation date.
+                DateTime nextInDate = application.CreatedDate;
+
+                foreach (var historyItem in sortedHistories)
+                {
+                    historyDtos.Add(new HistoryItemDTO
+                    {
+                        // InDate is the OutDate of the previous step, or the application's create date for the first step.
+                        InDate = nextInDate,
+
+                        // OutDate is the date this department took action.
+                        OutDate = historyItem.ActionDate,
+
+                        // Standard properties
+                        Action = historyItem.Action,
+                        Department = historyItem.Department.DepartmentName,
+                        Notes = historyItem.Notes
+                    });
+
+                    // The OutDate of this step becomes the InDate for the next step.
+                    nextInDate = historyItem.ActionDate;
+                }
+
+                // ===================================================================
+                // END: NEW LOGIC
+                // ===================================================================
+
+
                 return new ApplicationDetailsDTO
                 {
                     ApplicationName = application.ApplicationType.ApplicationTypeName,
@@ -432,24 +569,22 @@ namespace NextStep.Core.Services
                     CreatedDepartment = application.CreatedByUser.Department.DepartmentName,
                     Notes = application.Notes,
                     FileUrl = application.FileUpload,
+                    StudentName = application.Student.User.UserName,
+                    StudentNId = application.Student.Naid,
                     Statue = application.Status,
-                    History = application.ApplicationHistories
-                        .OrderBy(h => h.ActionDate)
-                        .Select(h => new HistoryItemDTO
-                        {
-                            ActionDate = h.ActionDate,
-                            Action = h.Action,
-                            Department = h.Department.DepartmentName,
-                            Notes = h.Notes
-                        }).ToList(),
-                    Steps = stepDtos
+
+                    // Assign the newly created list here
+                    History = historyDtos,
+
+                    Steps = stepDtos,
+                    ApplicationContext = applicationContext,
                 };
             }
             catch (Exception ex)
             {
                 // Log the exception
                 Console.WriteLine($"Error in GetApplicationDetailsAsync: {ex.Message}");
-                throw;
+                throw new Exception(ex.Message);
             }
         }
     }

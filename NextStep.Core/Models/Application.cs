@@ -35,6 +35,7 @@ namespace NextStep.Core.Models
         [ForeignKey("Steps")]
         public int StepID { get; set; }
         public Steps Steps { get; set; }
+        public bool IsDone { get; set; } = false;
         public virtual ICollection<ApplicationHistory> ApplicationHistories { get; set; }
 
     }
