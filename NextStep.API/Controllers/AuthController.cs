@@ -19,15 +19,24 @@ namespace NextStep.API.Controllers
         [HttpPost("register/employee")]
         public async Task<IActionResult> RegisterEmployee([FromBody] RegisterEmployeeDTO model)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
 
-            var result = await _authService.RegisterEmployeeAsync(model);
+                var result = await _authService.RegisterEmployeeAsync(model);
 
-            if (!result.IsAuthenticated)
-                return BadRequest(result.Message);
+                if (!result.IsAuthenticated)
+                    return BadRequest(result.Message);
 
-            return Ok(result);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+
+                return BadRequest(ex);
+            }
+           
         }
 
         [HttpPost("login")]

@@ -88,7 +88,9 @@ namespace NextStep.Core.Services
                 // Map the ApplicationType from the DTO
                 var type = _mapper.Map<ApplicationType>(dto);
                 // Set the CreatedByDeptId if not provided
-                type.CreatedByDeptId = dto.createStepsDTOs.FirstOrDefault()?.DepartmentId ?? 0;
+                if(dto.createStepsDTOs is null || dto.createStepsDTOs.Where(s => s.StepOrder == 1).FirstOrDefault() is null)
+                    throw new ArgumentNullException(nameof(dto.createStepsDTOs), "Steps cannot be null");
+                type.CreatedByDeptId =(int) dto.createStepsDTOs.Where(s=>s.StepOrder==1).FirstOrDefault().DepartmentId;
 
 
                 // Add the ApplicationType to the database

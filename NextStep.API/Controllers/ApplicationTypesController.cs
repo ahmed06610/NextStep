@@ -43,11 +43,20 @@ namespace NextStep.API.Controllers
         [HttpPost]
         public async Task<ActionResult<ApplicationTypeDTO>> Create([FromBody] CreateApplicationTypeDTO dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
 
-            var createdType = await _service.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = createdType.Id }, createdType);
+                var createdType = await _service.CreateAsync(dto);
+                return CreatedAtAction(nameof(GetById), new { id = createdType.Id }, createdType);
+            }
+            catch (Exception ex)
+            {
+
+                return BadRequest(ex);
+            }
+            
         }
 
         [Authorize(Roles = "ادمن")]

@@ -46,7 +46,6 @@ namespace NextStep.Core.Interfaces.Services
         /// Gets detailed statistics for a single department.
         /// </summary>
         Task<DepartmentStatsDTO> GetDepartmentStatsAsync(int departmentId, DateTime? startDate, DateTime? endDate);
-
         /// <summary>
         /// Gets a simple count of applications by status for a single department.
         /// </summary>

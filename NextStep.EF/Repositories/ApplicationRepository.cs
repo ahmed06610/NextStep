@@ -35,7 +35,7 @@ namespace NextStep.EF.Repositories
                     .ThenInclude(e => e.Department)
                 .Where(a =>
                     ((a.Steps.DepartmentID == departmentId && a.Status == "قيد_التنفيذ") ||
-                    (a.CreatedByUser.DepartmentID == departmentId &&
+                    (a.ApplicationType.CreatedByDeptId == departmentId &&
                      (a.Status == "مقبول" || a.Status == "مرفوض")))
                     && a.IsDone == false
                 );
@@ -75,7 +75,7 @@ namespace NextStep.EF.Repositories
                 .Include(a => a.CreatedByUser)
                     .ThenInclude(e => e.Department)
                 .Where(a =>
-                    a.ApplicationType.CreatedByDeptId == departmentId ||
+                   ( a.ApplicationType.CreatedByDeptId == departmentId && (a.Status != "مقبول" || a.Status != "مرفوض")) ||
                     a.ApplicationHistories.Any(h =>
                         h.Department.DepartmentID == departmentId &&
                         (h.Action == "موافقة" || h.Action == "رفض")

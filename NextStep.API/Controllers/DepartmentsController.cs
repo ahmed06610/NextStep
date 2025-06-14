@@ -36,7 +36,7 @@ namespace NextStep.API.Controllers
             var department = await _departmentService.CreateAsync(dto);
 
             // Add role for the department
-            var roleName = $"موظف {dto.DepartmentName}";
+            var roleName = $"{dto.DepartmentName}";
             if (!await _roleManager.RoleExistsAsync(roleName))
             {
                 await _roleManager.CreateAsync(new IdentityRole(roleName));

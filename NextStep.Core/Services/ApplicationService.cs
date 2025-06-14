@@ -102,13 +102,13 @@ namespace NextStep.Core.Services
                 }
 
                 var appsForStudent = await _unitOfWork.Application.GetQueryable(a => a.StudentID == student.StudentID 
-                && a.ApplicationTypeID==dto.ApplicationTypeID
+               
                 && a.Status != AppStatues.مرفوض.ToString()
                 )
                     .FirstOrDefaultAsync();
                 if (appsForStudent != null)
                 {
-                    throw new Exception("الطالب لديه طلبات سابقة لهذا النوع من الطلبات جاريه الان او تم الموافقه عليها. لا يمكن إنشاء طلب جديد في نفس الوقت.");
+                    throw new Exception("الطالب لديه طلبات جاريه الان او تم الموافقه عليها. لا يمكن إنشاء طلب جديد في نفس الوقت.");
                 }
 
                 var initialStep = await _unitOfWork.Steps.GetInitialStepByApplicationType(dto.ApplicationTypeID);
@@ -284,13 +284,13 @@ namespace NextStep.Core.Services
         }
 
         public async Task<InboxResponseDTO> GetInboxApplicationsAsync(
-      int departmentId,
-      bool isOrderCreatingDepartment,
-      string search = null,
-      int? requestType = null,
-      string status = null,
-      int page = 1,
-      int limit = 10)
+ int departmentId,
+ bool isOrderCreatingDepartment,
+ string search = null,
+ int? requestType = null,
+ string status = null,
+ int page = 1,
+ int limit = 10)
         {
             try
             {
@@ -395,14 +395,14 @@ namespace NextStep.Core.Services
                 }
 
                 var totalApplications = await query.CountAsync();
-                var ApprovedApplications =await query
+                var ApprovedApplications = await query
                     .Where(a => a.Status == AppStatues.مقبول.ToString())
                     .CountAsync();
-                var  RejectedApplications =await query
+                var RejectedApplications = await query
                     .Where(a => a.Status == AppStatues.مرفوض.ToString())
                     .CountAsync();
 
-                var    InProgressApplications= await query
+                var InProgressApplications = await query
                     .Where(a => a.Status == AppStatues.قيد_التنفيذ.ToString())
                     .CountAsync();
                 var applications = await query
@@ -440,8 +440,6 @@ namespace NextStep.Core.Services
                 throw new Exception(ex.Message);
             }
         }
-
-
 
         public async Task<ApplicationDetailsDTO> GetApplicationDetailsAsync(int applicationId, int empId = 0)
         {

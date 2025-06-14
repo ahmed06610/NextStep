@@ -97,6 +97,8 @@ namespace NextStep.Core.Services
 
         public async Task<AuthResponseDTO> RegisterEmployeeAsync(RegisterEmployeeDTO model)
         {
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+
             try
             {
                 var authModel = new AuthResponseDTO();
@@ -147,6 +149,8 @@ namespace NextStep.Core.Services
                 await _unitOfWork.Employee.AddAsync(employee);
                 await _unitOfWork.CompleteAsync();
 
+                // Commit transaction
+                await transaction.CommitAsync();
                 // Generate token
                 var jwtToken = await CreateJwtToken(user);
 
@@ -166,6 +170,8 @@ namespace NextStep.Core.Services
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
+                throw new Exception("Registration failed. Transaction rolled back.", ex);
 
                 throw ex;
             }

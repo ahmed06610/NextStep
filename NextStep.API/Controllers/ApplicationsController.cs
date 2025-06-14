@@ -96,7 +96,7 @@ namespace NextStep.API.Controllers
             return Ok(applicationDetails);
         }
 
-        [Authorize(Roles = "موظف حسابات علميه, موظف إدارة الدرسات العليا, موظف ذكاء اصطناعي, موظف علوم حاسب, موظف نظم المعلومات")]
+        [Authorize(Roles = " حسابات علميه,إدارة الدرسات العليا,ذكاء اصطناعي,علوم حاسب,نظم المعلومات")]
         [HttpPost]
         public async Task<IActionResult> CreateApplication([FromForm] CreateApplicationDTO dto)
         {
@@ -165,11 +165,11 @@ namespace NextStep.API.Controllers
             // Check if department creates orders
             bool isOrderCreatingDepartment = userRole switch
             {
-                "موظف حسابات علميه" => true,
-                "موظف إدارة الدرسات العليا" => true,
-                "موظف ذكاء اصطناعي" => true,
-                "موظف علوم حاسب" => true,
-                "موظف نظم المعلومات" => true,
+                "حسابات علميه" => true,
+                "إدارة الدرسات العليا" => true,
+                "ذكاء اصطناعي" => true,
+                "علوم حاسب" => true,
+                "نظم المعلومات" => true,
                 _ => false
             };
 

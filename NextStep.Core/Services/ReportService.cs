@@ -177,24 +177,40 @@ namespace NextStep.Core.Services
                 Labels = allDepartments.Select(d => d.DepartmentName).ToList(),
                 Data = new List<int>(new int[allDepartments.Count()])
             };
-            var deptIndexMap = dto.Labels.Select((name, index) => new { name, index }).ToDictionary(x => x.name, x => x.index);
 
-            // This logic MUST now mirror GetDepartmentStatsAsync to be consistent.
+            // This loop calls the master GetDepartmentStatsAsync for each department
+            // and then extracts the correct value based on the requested status.
             for (int i = 0; i < allDepartments.Count(); i++)
             {
                 var deptId = allDepartments.ElementAt(i).DepartmentID;
+                // Get the new, detailed stats for the current department in the loop.
                 var deptStats = await GetDepartmentStatsAsync(deptId, startDate, endDate);
 
+                // This switch statement now correctly maps the status to the new DTO structure.
                 int count = status.ToLower() switch
                 {
-                    "مقبول" => deptStats.ApprovedRequests,
-                    "مرفوض" => deptStats.RejectedRequests,
-                    "قيد التنفيذ" => deptStats.PendingRequests,
-                    "متأخره" => deptStats.DelayedRequests,
+                    // "Approved" for a department is the sum of apps it created that were approved
+                    // PLUS apps it received from others and approved itself.
+                    "مقبول" => deptStats.CreatedByDepartment.AcceptedByOthers + deptStats.ReceivedFromOthers.AcceptedByDepartment,
+
+                    // "Rejected" is the sum of apps it created that were rejected
+                    // PLUS apps it received from others and rejected itself.
+                    "مرفوض" => deptStats.CreatedByDepartment.RejectedByOthers + deptStats.ReceivedFromOthers.RejectedByDepartment,
+
+                    // "Pending" on a global chart should show who has work IN THEIR INBOX right now.
+                    // This is perfectly represented by the "InProgress" count of items received from others.
+                    "قيد التنفيذ" => deptStats.ReceivedFromOthers.InProgress,
+
+                    // "Delayed" is the subset of items pending in THEIR INBOX.
+                    "متأخره" => deptStats.ReceivedFromOthers.Delayed,
+
+                    // Default case for any unknown status.
                     _ => 0
                 };
+
                 dto.Data[i] = count;
             }
+
             return dto;
         }
 
@@ -291,47 +307,118 @@ namespace NextStep.Core.Services
         #region Department-Specific Reports (Fully Corrected)
 
         // FIXED: This is the master source of truth for department stats, ensuring consistency.
+        // In ReportService.cs
+
+        // In ReportService.cs
+
+        // In ReportService.cs
+
+        // In ReportService.cs
+
         public async Task<DepartmentStatsDTO> GetDepartmentStatsAsync(int departmentId, DateTime? startDate, DateTime? endDate)
         {
-            var historicalQuery = GetHistoricalDepartmentApplications(departmentId, startDate, endDate);
-            var currentInboxQuery = GetCurrentDepartmentInbox(departmentId, startDate, endDate);
-
+            // --- 1. DEFINE STATUSES & GET THE DATA ---
+            var pendingStatus = AppStatues.قيد_التنفيذ.ToString();
             var approvedStatus = AppStatues.مقبول.ToString();
             var rejectedStatus = AppStatues.مرفوض.ToString();
-
-            var approvedRequests = await historicalQuery.CountAsync(a => a.Status == approvedStatus);
-            var rejectedRequests = await historicalQuery.CountAsync(a => a.Status == rejectedStatus);
-            var CreatedRequests = await historicalQuery.CountAsync(a => a.ApplicationType.CreatedByDeptId == departmentId);
-
-            var pendingRequests = await currentInboxQuery.CountAsync();
-            var totalRequests =approvedRequests+rejectedRequests+pendingRequests+CreatedRequests;
-
-
             var delayedDate = DateTime.UtcNow.AddDays(-DelayedThresholdDays);
-            var delayedRequests = await currentInboxQuery
-                .Include(a => a.ApplicationHistories)
-                .CountAsync(a => a.ApplicationHistories.Any() && a.ApplicationHistories.OrderByDescending(h => h.ActionDate).First().ActionDate < delayedDate);
 
+            // Get a base query with date filters applied
+            var baseQuery = GetFilteredApplications(startDate, endDate).Include(a => a.ApplicationType)
+                .Include(a => a.Steps)
+                .Include(a => a.ApplicationHistories)
+                .Include(a => a.CreatedByUser);
+
+            // Get applications where the TYPE was created by this department.
+            // This is the "Created" dataset.
+            var createdApplications = await baseQuery
+                .Where(a => a.ApplicationType.CreatedByDeptId == departmentId)
+                .ToListAsync();
+
+            // ===================================================================
+            // START: CORRECTED LOGIC FOR "RECEIVED" DATASET
+            // ===================================================================
+            // The "Received" dataset must include both historically processed items AND items currently in the inbox.
+            // This is the key fix.
+            var receivedApplications = await baseQuery
+                .Where(a =>
+                    // Rule 1: The application type was NOT created by this department.
+                    a.ApplicationType.CreatedByDeptId != departmentId &&
+                    (
+                        // Rule 2a: The application has a history record of this department taking an action (approve/reject).
+                        a.ApplicationHistories.Any(h => h.ActionByDeptId == departmentId && (h.Action == "موافقة" || h.Action == "رفض")) ||
+                        // OR Rule 2b: The application is CURRENTLY pending in this department's inbox.
+                        (a.Status == pendingStatus && a.Steps.DepartmentID == departmentId)
+
+                    )
+                )
+                .ToListAsync();
+            // ===================================================================
+            // END: CORRECTED LOGIC FOR "RECEIVED" DATASET
+            // ===================================================================
+
+            // --- 2. CALCULATE "CREATED BY DEPARTMENT" STATS ---
+            // This logic remains correct.
+            var createdByDeptStats = new CreatedByDepartmentStatsDTO
+            {
+                Total = createdApplications.Count,
+                InProgress = createdApplications.Count(a => a.Status == pendingStatus),
+                Delayed = createdApplications
+                    .Where(a => a.Status == pendingStatus)
+                    .Count(a => a.ApplicationHistories.Any() && a.ApplicationHistories.Max(h => h.ActionDate) < delayedDate),
+                AcceptedByOthers = createdApplications.Count(a => a.Status == approvedStatus),
+                RejectedByOthers = createdApplications.Count(a => a.Status == rejectedStatus)
+            };
+
+            // --- 3. CALCULATE "RECEIVED FROM OTHERS" STATS ---
+            // Now this will be calculated from the correct, comprehensive "receivedApplications" list.
+            var receivedFromOthersStats = new ReceivedFromOthersStatsDTO
+            {
+                // "InProgress" now correctly counts the pending items from the `receivedApplications` list.
+                InProgress = receivedApplications
+                    .Count(a => a.Status == pendingStatus && a.Steps.DepartmentID == departmentId),
+
+                Delayed = receivedApplications
+                    .Where(a => a.Status == pendingStatus && a.Steps.DepartmentID == departmentId)
+                    .Count(a => a.ApplicationHistories.Any() && a.ApplicationHistories.Max(h => h.ActionDate) < delayedDate),
+
+                // These counts are based on the final status of the received applications.
+                AcceptedByDepartment = receivedApplications.Count(a => a.ApplicationHistories.Any(h=>h.ActionByDeptId==departmentId &&h.Action== "موافقة")) ,
+                RejectedByDepartment = receivedApplications.Count(a => a.ApplicationHistories.Any(h => h.ActionByDeptId == departmentId && h.Action == "رفض"))
+            };
+            var totalr= receivedFromOthersStats.AcceptedByDepartment + receivedFromOthersStats.RejectedByDepartment +
+                receivedFromOthersStats.InProgress ;
+            var totalc = createdByDeptStats.AcceptedByOthers + createdByDeptStats.RejectedByOthers +
+                createdByDeptStats.InProgress ;
+
+            // --- 4. ASSEMBLE THE FINAL DTO ---
             return new DepartmentStatsDTO
             {
-                TotalRequests = totalRequests,
-                CreatedRequests = CreatedRequests,
-                ApprovedRequests = approvedRequests,
-                RejectedRequests = rejectedRequests,
-                PendingRequests = pendingRequests,
-                DelayedRequests = delayedRequests
+                // The total is now implicitly correct because the two lists are mutually exclusive.
+                TotalRequests = totalc+totalr,
+                CreatedByDepartment = createdByDeptStats,
+                ReceivedFromOthers = receivedFromOthersStats
             };
         }
-
         public async Task<DepartmentStatusCountDTO> GetDepartmentRequestStatusCountsAsync(int departmentId, DateTime? startDate, DateTime? endDate)
         {
+            // 1. Call the new, powerful GetDepartmentStatsAsync to get the detailed, structured data.
             var stats = await GetDepartmentStatsAsync(departmentId, startDate, endDate);
+
+            // 2. Aggregate the detailed stats into the simple, flat DTO required by this endpoint.
             return new DepartmentStatusCountDTO
             {
-                Approved = stats.ApprovedRequests,
-                Rejected = stats.RejectedRequests,
-                Pending = stats.PendingRequests,
-                Delayed = stats.DelayedRequests
+                // "Approved" is the sum of apps the dept created that were approved PLUS apps they received and approved themselves.
+                Approved = stats.CreatedByDepartment.AcceptedByOthers + stats.ReceivedFromOthers.AcceptedByDepartment,
+
+                // "Rejected" is the sum of apps the dept created that were rejected PLUS apps they received and rejected themselves.
+                Rejected = stats.CreatedByDepartment.RejectedByOthers + stats.ReceivedFromOthers.RejectedByDepartment,
+
+                // "Pending" for a department's summary should ONLY reflect what is currently in THEIR inbox.
+                Pending = stats.ReceivedFromOthers.InProgress,
+
+                // "Delayed" is the subset of items that are pending in THEIR inbox.
+                Delayed = stats.ReceivedFromOthers.Delayed
             };
         }
 
@@ -412,37 +499,74 @@ namespace NextStep.Core.Services
 
             var grouping = GetTimeGrouping(startDate, endDate);
 
-            var departmentHistories = await _unitOfWork.ApplicationHistory.GetQueryable(h => h.ActionByDeptId == departmentId)
-                .Include(h => h.Application)
-                .Where(h => (h.ActionDate >= startDate.Value.Date) && (h.ActionDate < endDate.Value.AddDays(1).Date))
+            // ===================================================================
+            //  PART 1: GATHER ALL "PROCESSED" and "RECEIVED" DATA
+            // ===================================================================
+
+            // --- Step 1.1: Get all actions PROCESSED by the department in the date range. ---
+            // This will be our source for `processedData`.
+            var processedActions = await _unitOfWork.ApplicationHistory
+                .GetQueryable(h =>h.Application.ApplicationType.CreatedByDeptId!=departmentId && h.ActionByDeptId == departmentId &&
+                                   h.ActionDate >= startDate.Value.Date && h.ActionDate < endDate.Value.AddDays(1).Date
+                                   )
+                .Include(h => h.Application).ThenInclude(h=>h.ApplicationType   )
                 .Select(h => new { h.ApplicationID, h.ActionDate, CreatedDate = h.Application.CreatedDate })
                 .ToListAsync();
 
-            var applicationIds = departmentHistories.Select(h => h.ApplicationID).Distinct().ToList();
+            var masterReceivedDates = new List<DateTime>();
 
-            var fullHistoriesForApps = await _unitOfWork.ApplicationHistory.GetQueryable(h => applicationIds.Contains(h.ApplicationID))
-                .OrderBy(h => h.ApplicationID).ThenBy(h => h.ActionDate)
-                .Select(h => new { h.ApplicationID, h.ActionDate, h.ActionByDeptId })
-                .ToListAsync();
-
-            var receivedDates = new List<DateTime>();
-            foreach (var appId in applicationIds)
+            // --- Step 1.2: For each PROCESSED action, find its arrival date. ---
+            if (processedActions.Any())
             {
-                var appHistory = fullHistoriesForApps.Where(h => h.ApplicationID == appId).ToList();
-                var deptActions = departmentHistories.Where(h => h.ApplicationID == appId);
-                foreach (var action in deptActions)
+                var processedAppIds = processedActions.Select(h => h.ApplicationID).Distinct();
+                var fullHistoriesForProcessedApps = await _unitOfWork.ApplicationHistory
+                    .GetQueryable(h => processedAppIds.Contains(h.ApplicationID))
+                    .OrderBy(h => h.ApplicationID).ThenBy(h => h.ActionDate)
+                    .Select(h => new { h.ApplicationID, h.ActionDate })
+                    .ToListAsync();
+
+                foreach (var action in processedActions)
                 {
-                    var previousAction = appHistory.LastOrDefault(h => h.ActionDate < action.ActionDate);
-                    receivedDates.Add(previousAction?.ActionDate ?? action.CreatedDate);
+                    var previousAction = fullHistoriesForProcessedApps
+                        .Where(h => h.ApplicationID == action.ApplicationID && h.ActionDate < action.ActionDate)
+                        .OrderByDescending(h => h.ActionDate)
+                        .FirstOrDefault();
+
+                    masterReceivedDates.Add(previousAction?.ActionDate ?? action.CreatedDate);
                 }
             }
 
+            // --- Step 1.3: Get all applications CURRENTLY PENDING in the department's inbox. ---
+            // This is the CRUCIAL NEW LOGIC to include items that have been received but not yet processed.
+            var pendingStatus = AppStatues.قيد_التنفيذ.ToString();
+            var pendingApplications = await _unitOfWork.Application
+                .GetQueryable(a => a.Status == pendingStatus && a.Steps.DepartmentID == departmentId)
+                .Include(a => a.ApplicationHistories)
+                .ToListAsync();
+
+            foreach (var app in pendingApplications)
+            {
+                // Find the arrival date, which is the date of the last action taken on the app.
+                var arrivalDate = app.ApplicationHistories
+                    .OrderByDescending(h => h.ActionDate)
+                    .FirstOrDefault()?.ActionDate ?? app.CreatedDate;
+
+                // IMPORTANT: Only add it to our list if the ARRIVAL date is within the selected date range.
+                if (arrivalDate >= startDate.Value.Date && arrivalDate < endDate.Value.AddDays(1).Date)
+                {
+                    masterReceivedDates.Add(arrivalDate);
+                }
+            }
+
+            // ===================================================================
+            //  PART 2: GROUP AND BUILD THE DTO
+            // ===================================================================
             var dto = new DepartmentTimeAnalysisDTO();
             switch (grouping)
             {
                 case TimeGrouping.Day:
-                    var processedDaily = departmentHistories.GroupBy(h => h.ActionDate.Date).ToDictionary(g => g.Key, g => g.Count());
-                    var receivedDaily = receivedDates.GroupBy(d => d.Date).ToDictionary(g => g.Key, g => g.Count());
+                    var processedDaily = processedActions.GroupBy(h => h.ActionDate.Date).ToDictionary(g => g.Key, g => g.Count());
+                    var receivedDaily = masterReceivedDates.GroupBy(d => d.Date).ToDictionary(g => g.Key, g => g.Count());
                     for (var dt = startDate.Value.Date; dt <= endDate.Value.Date; dt = dt.AddDays(1))
                     {
                         dto.Labels.Add(dt.ToString("yyyy-MM-dd"));
@@ -451,8 +575,8 @@ namespace NextStep.Core.Services
                     }
                     break;
                 case TimeGrouping.Year:
-                    var processedYearly = departmentHistories.GroupBy(h => h.ActionDate.Year).ToDictionary(g => g.Key, g => g.Count());
-                    var receivedYearly = receivedDates.GroupBy(d => d.Year).ToDictionary(g => g.Key, g => g.Count());
+                    var processedYearly = processedActions.GroupBy(h => h.ActionDate.Year).ToDictionary(g => g.Key, g => g.Count());
+                    var receivedYearly = masterReceivedDates.GroupBy(d => d.Year).ToDictionary(g => g.Key, g => g.Count());
                     for (var year = startDate.Value.Year; year <= endDate.Value.Year; year++)
                     {
                         dto.Labels.Add(year.ToString());
@@ -462,8 +586,8 @@ namespace NextStep.Core.Services
                     break;
                 case TimeGrouping.Month:
                 default:
-                    var processedMonthly = departmentHistories.GroupBy(h => new { h.ActionDate.Year, h.ActionDate.Month }).ToDictionary(g => new DateTime(g.Key.Year, g.Key.Month, 1), g => g.Count());
-                    var receivedMonthly = receivedDates.GroupBy(d => new { d.Year, d.Month }).ToDictionary(g => new DateTime(g.Key.Year, g.Key.Month, 1), g => g.Count());
+                    var processedMonthly = processedActions.GroupBy(h => new { h.ActionDate.Year, h.ActionDate.Month }).ToDictionary(g => new DateTime(g.Key.Year, g.Key.Month, 1), g => g.Count());
+                    var receivedMonthly = masterReceivedDates.GroupBy(d => new { d.Year, d.Month }).ToDictionary(g => new DateTime(g.Key.Year, g.Key.Month, 1), g => g.Count());
                     var dateIterator = new DateTime(startDate.Value.Year, startDate.Value.Month, 1);
                     while (dateIterator <= endDate.Value)
                     {
@@ -477,7 +601,6 @@ namespace NextStep.Core.Services
             }
             return dto;
         }
-
         public async Task<ChartDataDTO<int>> GetRejectionReasonsAsync(int departmentId, DateTime? startDate, DateTime? endDate)
         {
             var rejectedStatus = AppStatues.مرفوض.ToString();
